@@ -24,6 +24,7 @@ class Part(SmartNode):
 	def instrument(self):
 		return Instrument.from_element(self.find('Instrument'))
 
+	@property
 	def name(self):
 		return self.element_text('trackName')
 
@@ -33,6 +34,7 @@ class Instrument(SmartNode):
 	def channels(self):
 		return Channel.from_elements(self.findall('Channel'))
 
+	@property
 	def name(self):
 		name = self.element_text('longName')
 		if name is None:
@@ -73,17 +75,34 @@ class Channel(SmartNode):
 			int(self.program())
 		)
 
+	@property
 	def name(self):
 		xmlname = self.attribute_value('name')
 		return 'normal' if xmlname is None else xmlname
 
+	@property
 	def midi_port(self):
 		text = self.element_text('midiPort')
 		return -1 if text is None else int(text)
 
+	@midi_port.setter
+	def midi_port(self, value):
+		node = self.find('midiPort')
+		if node is None:
+			node = et.SubElement(self.element, 'midiPort')
+		node.text = str(value)
+
+	@property
 	def midi_channel(self):
 		text = self.element_text('midiChannel')
 		return -1 if text is None else int(text)
+
+	@midi_channel.setter
+	def midi_channel(self, value):
+		node = self.find('midiChannel')
+		if node is None:
+			node = et.SubElement(self.element, 'midiChannel')
+		node.text = str(value)
 
 
 class Score():
@@ -143,11 +162,11 @@ class Score():
 
 	def part(self, name):
 		for p in self.parts():
-			if p.name() == name:
+			if p.name == name:
 				return p
 
 	def part_names(self):
-		return [ p.name() for p in self.parts() ]
+		return [ p.name for p in self.parts() ]
 
 	def duplicate_part_names(self):
 		a = self.part_names()
@@ -157,19 +176,7 @@ class Score():
 		return len(self.duplicate_part_names()) > 0
 
 	def instrument_names(self):
-		return [ p.instrument().name() for p in self.parts() ]
-
-	def midi_ports_okay(self):
-		ports = {};
-		for chan in self.channels():
-			port = chan.midi_port()
-			channel = chan.midi_channel()
-			if not port in ports:
-				ports[port] = [ None for i in range(16) ]
-			if ports[port][channel] is not None:
-				return False
-			ports[port][channel] = True
-		return True
+		return [ p.instrument().name for p in self.parts() ]
 
 	def sound_fonts(self):
 		return list(set( el.text for el in self.findall('.//Trackesizer/Fluid/val') ))
