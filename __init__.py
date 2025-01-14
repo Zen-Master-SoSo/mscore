@@ -2,7 +2,7 @@
 #
 #  Copyright 2024 liyang <liyang@veronica>
 #
-import os, sys, logging, configparser, glob
+import os, sys, logging, configparser, glob, io
 import xml.etree.ElementTree as et
 from zipfile import ZipFile
 from pathlib import Path
@@ -105,19 +105,29 @@ class Score():
 
 	def __init__(self, filename):
 		self.filename = filename
-		ext = filename.split('.')[-1:][0]
-		if ext == 'mscx':
+		self.ext = filename.split('.')[-1]
+		if self.ext == 'mscx':
 			self.tree = et.parse(filename)
-		elif ext == 'mscz':
-			with ZipFile(filename, 'r') as zip:
-				sc_entries = [ name for name in zip.namelist() if name.split('.')[-1:][0] == 'mscx']
-				if len(sc_entries):
-					if len(sc_entries) > 1:
+		elif self.ext == 'mscz':
+			with ZipFile(filename, 'r') as zipfile:
+				mscx_entries = [ name for name in zipfile.namelist() if name.split('.')[-1:][0] == 'mscx']
+				if len(mscx_entries):
+					if len(mscx_entries) > 1:
 						logging.warning('Score has multiple archived .mscx files')
-					data = zip.read(sc_entries[0])
-					self.tree = et.fromstring(data)
+					self.mscx_entry = mscx_entries[0]
+					fob = zipfile.open(self.mscx_entry, 'r')
+					self.tree = et.parse(fob)
 		else:
-			raise Exception("Unsupported file extension: " + ext)
+			raise Exception("Unsupported file extension: " + self.ext)
+
+	def save(self):
+		if self.ext == 'mscx':
+			self.tree.write(self.filename, xml_declaration=True, encoding='utf-8')
+		elif self.ext == 'mscz':
+			with io.BytesIO() as fob:
+				self.tree.write(fob)
+				with ZipFile(self.filename, 'w') as zipfile:
+					zipfile.writestr(self.mscx_entry, fob.getvalue())
 
 	def dump(self):
 		dump(self.tree)
