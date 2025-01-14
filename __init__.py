@@ -85,12 +85,6 @@ class Channel(SmartNode):
 		text = self.element_text('midiChannel')
 		return -1 if text is None else int(text)
 
-	def public_midi_port(self):
-		return self.midi_port() + 1
-
-	def public_midi_channel(self):
-		return self.midi_channel() + 1
-
 
 class Score():
 
