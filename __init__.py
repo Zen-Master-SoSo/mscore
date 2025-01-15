@@ -83,26 +83,26 @@ class Channel(SmartNode):
 	@property
 	def midi_port(self):
 		text = self.element_text('midiPort')
-		return -1 if text is None else int(text)
+		return -1 if text is None else int(text) + 1
 
 	@midi_port.setter
 	def midi_port(self, value):
 		node = self.find('midiPort')
 		if node is None:
 			node = et.SubElement(self.element, 'midiPort')
-		node.text = str(value)
+		node.text = str(int(value) - 1)
 
 	@property
 	def midi_channel(self):
 		text = self.element_text('midiChannel')
-		return -1 if text is None else int(text)
+		return -1 if text is None else int(text) + 1
 
 	@midi_channel.setter
 	def midi_channel(self, value):
 		node = self.find('midiChannel')
 		if node is None:
 			node = et.SubElement(self.element, 'midiChannel')
-		node.text = str(value)
+		node.text = str(int(value) - 1)
 
 
 class Score():

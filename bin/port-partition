@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import sys
-from mscore.port_partition import main
+from mscore.scripts import port_partition
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(port_partition.main() or 0)

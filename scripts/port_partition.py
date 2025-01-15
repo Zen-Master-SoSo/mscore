@@ -1,4 +1,4 @@
-#  mscore/port-partition.py
+#  mscore/scripts/port_partition.py
 #
 #  Copyright 2025 liyang <liyang@veronica>
 #
@@ -56,4 +56,4 @@ def main():
 if __name__ == "__main__":
 	main()
 
-#  command.py
+#  end mscore/scripts/port_partition.py
