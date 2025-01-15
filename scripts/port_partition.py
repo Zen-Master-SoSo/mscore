@@ -47,7 +47,6 @@ def main():
 		print(inst.name)
 		for chan in inst.channels():
 			print('  %02d %02d %s' % (chan.midi_port, chan.midi_channel, chan.name))
-		print()
 
 	if not options.dry_run:
 		score.save()
