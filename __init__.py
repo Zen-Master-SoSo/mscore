@@ -28,6 +28,9 @@ class Part(SmartNode):
 	def name(self):
 		return self.element_text('trackName')
 
+	def __str__(self):
+		return f'<Part "{self.name}">'
+
 
 class Instrument(SmartNode):
 
@@ -43,6 +46,9 @@ class Instrument(SmartNode):
 
 	def musicxml_id(self):
 		return self.element_text('instrumentId')
+
+	def __str__(self):
+		return f'<Instrument "{self.name}">'
 
 
 class Channel(SmartNode):
@@ -102,7 +108,10 @@ class Channel(SmartNode):
 		node = self.find('midiChannel')
 		if node is None:
 			node = et.SubElement(self.element, 'midiChannel')
-		node.text = str(int(value) - 1)
+		node.text = str(value)
+
+	def __str__(self):
+		return f'<Channel "{self.name}">'
 
 
 class Score():
@@ -242,6 +251,9 @@ class Score():
 	def is_score(cls, filename):
 		ext = filename.split('.')[-1:][0]
 		return ext in ['mscx', 'mscz']
+
+	def __str__(self):
+		return f'<Score "{self.filename}">'
 
 
 #  end mscore/__init__.py
