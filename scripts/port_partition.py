@@ -29,7 +29,7 @@ def main():
 		chans_to_map = [ chan for chan in inst.channels() \
 			if not '{}.{}'.format(inst_name, chan.name) in mapped_channels ] \
 			if options.compact else inst.channels()
-		if channel_number + len(chans_to_map) > 16:
+		if channel_number + len(chans_to_map) > 17:
 			port_number += 1
 			channel_number = 1
 		for chan in inst.channels():
@@ -39,8 +39,8 @@ def main():
 				chan.midi_channel = mapped_channels[key][1]
 			else:
 				chan.midi_port = port_number
-				chan.midi_channel = channel_number
-				mapped_channels[key] = (port_number, channel_number)
+				chan.midi_channel = channel_number - 1
+				mapped_channels[key] = (port_number, channel_number - 1)
 				channel_number += 1
 
 	for inst in score.instruments():
