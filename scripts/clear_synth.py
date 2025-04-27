@@ -16,17 +16,15 @@ def main():
 	options = p.parse_args()
 	score = Score(options.Filename)
 	for instrument in score.instruments():
-		for node in instrument.findall('Articulation[@name]'):
-			instrument.element.remove(node)
 		for node in instrument.findall('trackName'):
 			instrument.element.remove(node)
 		for channel in instrument.findall('Channel'):
 			for node in channel.findall('controller'):
 				channel.remove(node)
 			for node in channel.findall('program'):
-				node.attrib['value'] = '1'
+				channel.remove(node)
 			for node in channel.findall('synti'):
-				node.text = 'Zerberus'
+				channel.remove(node)
 	score.save()
 
 if __name__ == "__main__":
