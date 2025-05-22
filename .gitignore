@@ -1,6 +1,7 @@
 *.pyc
 *.log
 *.geany
+*.mscz,
 __pycache__
 temp
 temp.*
