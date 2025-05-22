@@ -3,8 +3,26 @@
 #  Copyright 2024 liyang <liyang@veronica>
 #
 import os, logging, shutil, tempfile
-from pprint import pprint
+from subprocess import run, CalledProcessError
+from good_logging import log_error
 from mscore import Score
+
+
+def channel_repr(score):
+	return [ f'{channel.midi_port}:{channel.midi_channel}' \
+		for channel in score.channels() ]
+
+def assert_channel_sequence(score):
+	port = 1
+	channel = 1
+	for chan in score.channels():
+		assert(chan.midi_port == port)
+		assert(chan.midi_channel == channel)
+		channel += 1
+		if channel == 17:
+			port += 1
+			channel = 1
+
 
 if __name__ == "__main__":
 	log_format = "[%(filename)24s:%(lineno)-4d] %(levelname)-8s %(message)score"
@@ -20,53 +38,55 @@ if __name__ == "__main__":
 	print('sf_list:', sf_list)
 	instrument_names = score.instrument_names()
 	print('instrument_names:', instrument_names)
-	score_channels = [ f'{channel.midi_port}:{channel.midi_channel}' \
-		for channel in score.channels() ]
+	score_chan_repr = channel_repr(score)
 
-	_,temp_file = tempfile.mkstemp(suffix='.mscz')
-	shutil.copyfile(score_file, temp_file)
+	try:
 
-	temp_score = Score(temp_file)
-	assert(temp_score.sound_fonts() == sf_list)
-	assert(temp_score.instrument_names() == instrument_names)
-	temp_channels = [ f'{channel.midi_port}:{channel.midi_channel}' \
-		for channel in score.channels() ]
-	assert(temp_channels == score_channels)
+		_,test_file = tempfile.mkstemp(suffix='.mscz')
+		shutil.copyfile(score_file, test_file)
 
-	print('Modifying ...')
-	port = 1
-	channel = 1
-	for chan in temp_score.channels():
-		chan.midi_port = port
-		chan.midi_channel = channel
-		channel += 1
-		if channel == 17:
-			port += 1
-			channel = 1
-	temp_score.save()
-	print('Temp score saved at', temp_file)
+		test_score = Score(test_file)
+		assert(test_score.sound_fonts() == sf_list)
+		assert(test_score.instrument_names() == instrument_names)
+		assert(channel_repr(test_score) == score_chan_repr)
 
-	reloaded = Score(temp_file)
-	assert(reloaded.sound_fonts() == sf_list)
-	assert(reloaded.instrument_names() == instrument_names)
+		print('Modifying ...')
+		port = 1
+		channel = 1
+		for chan in test_score.channels():
+			chan.midi_port = port
+			chan.midi_channel = channel
+			channel += 1
+			if channel == 17:
+				port += 1
+				channel = 1
+		test_chan_repr = channel_repr(test_score)
+		assert(test_chan_repr != score_chan_repr)
 
-	print('Original score_channels:')
-	for channel in score.channels():
-		print(f'{channel.name:24s} {channel.midi_port:02d}:{channel.midi_channel:02d}')
-	print('Modified and reloaded score_channels:')
-	for channel in reloaded.channels():
-		print(f'{channel.name:24s} {channel.midi_port:02d}:{channel.midi_channel:02d}')
+		test_score.save()
+		print('Test score saved at', test_file)
 
-	port = 1
-	channel = 1
-	for chan in reloaded.channels():
-		assert(chan.midi_port == port)
-		assert(chan.midi_channel == channel)
-		channel += 1
-		if channel == 17:
-			port += 1
-			channel = 1
+		reloaded_score = Score(test_file)
+		assert(reloaded_score.sound_fonts() == sf_list)
+		assert(reloaded_score.instrument_names() == instrument_names)
+		reloaded_chan_repr = channel_repr(reloaded_score)
 
-	os.unlink(temp_file)
+		assert_channel_sequence(reloaded_score)
+
+		test_export_file = os.path.splitext(test_file)[0] + '.mscx'
+		try:
+			run(['musescore3', '--export-to', test_export_file, test_file])
+		except CalledProcessError as cpe:
+			log_error(cpe)
+		else:
+			test_export_score = Score(test_export_file)
+			assert_channel_sequence(test_export_score)
+		finally:
+			os.unlink(test_export_file)
+
+	except Exception as e:
+		log_error(e)
+	finally:
+		os.unlink(test_file)
 
 #  end mscore/test.py

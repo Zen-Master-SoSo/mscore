@@ -2,7 +2,7 @@
 #
 #  Copyright 2024 liyang <liyang@veronica>
 #
-import os, sys, logging, configparser, glob, io, tempfile
+import os, sys, logging, configparser, glob, io
 import xml.etree.ElementTree as et
 from zipfile import ZipFile
 from pathlib import Path
@@ -121,6 +121,9 @@ class Score():
 	__sys_sfpaths = None
 	__sf2s = {}
 
+	__zip_entries = None
+	__zip_mscx_index = None
+
 	USER_SF2 = 0
 	SYSTEM_SF2 = 1
 	MISSING_SF2 = 3
@@ -131,16 +134,21 @@ class Score():
 		if self.ext == '.mscx':
 			self.tree = et.parse(filename)
 		elif self.ext == '.mscz':
-			with ZipFile(filename, 'r') as zipfile:
-				mscx_entries = [ name for name in zipfile.namelist() if os.path.splitext(name)[-1] == '.mscx']
-				if len(mscx_entries):
-					if len(mscx_entries) > 1:
-						logging.warning('Score has multiple archived .mscx files')
-					self.zip_mscx_entry = mscx_entries[0]
-					fob = zipfile.open(self.zip_mscx_entry, 'r')
-					self.tree = et.parse(fob)
-				else:
-					raise Exception("No mscx entries found in zip file")
+			with ZipFile(self.filename, 'r') as zipfile:
+				self.__zip_entries = [
+					{
+						'info'	:info,
+						'data'	:zipfile.read(info.filename)
+					} for info in zipfile.infolist()
+				]
+			for idx in range(len(self.__zip_entries)):
+				if os.path.splitext(self.__zip_entries[idx]['info'].filename)[-1] == '.mscx':
+					self.__zip_mscx_index = idx
+					break
+			if self.__zip_mscx_index is None:
+				raise Exception("No mscx entries found in zip file")
+			with io.BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
+				self.tree = et.parse(bob)
 		else:
 			raise Exception("Unsupported file extension: " + self.ext)
 
@@ -148,20 +156,12 @@ class Score():
 		if self.ext == '.mscx':
 			self.tree.write(self.filename, xml_declaration=True, encoding='utf-8')
 		elif self.ext == '.mscz':
-			_,temp_file = tempfile.mkstemp(suffix='.mscz')
-			os.rename(self.filename, temp_file)
-			try:
-				with io.BytesIO() as fob:
-					self.tree.write(fob)
-					with ZipFile(temp_file, 'r') as original_zip:
-						with ZipFile(self.filename, 'w') as new_zip:
-							for item in original_zip.infolist():
-								if item.filename == self.zip_mscx_entry:
-									new_zip.writestr(self.zip_mscx_entry, fob.getvalue())
-								else:
-									new_zip.writestr(item, original_zip.read(item.filename))
-			finally:
-				os.unlink(temp_file)
+			with io.BytesIO() as bob:
+				self.tree.write(bob)
+				self.__zip_entries[self.__zip_mscx_index]['data'] = bob.getvalue()
+			with ZipFile(self.filename, 'w') as zipfile:
+				for entry in self.__zip_entries:
+					zipfile.writestr(entry['info'], entry['data'])
 
 	def dump(self):
 		dump(self.tree)
