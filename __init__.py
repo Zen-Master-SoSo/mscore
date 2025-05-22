@@ -2,7 +2,7 @@
 #
 #  Copyright 2024 liyang <liyang@veronica>
 #
-import os, sys, logging, configparser, glob, io
+import os, sys, logging, configparser, glob, io, tempfile
 import xml.etree.ElementTree as et
 from zipfile import ZipFile
 from pathlib import Path
@@ -108,7 +108,7 @@ class Channel(SmartNode):
 		node = self.find('midiChannel')
 		if node is None:
 			node = et.SubElement(self.element, 'midiChannel')
-		node.text = str(value)
+		node.text = str(int(value) - 1)
 
 	def __str__(self):
 		return f'<Channel "{self.name}">'
@@ -127,29 +127,41 @@ class Score():
 
 	def __init__(self, filename):
 		self.filename = filename
-		self.ext = filename.split('.')[-1]
-		if self.ext == 'mscx':
+		self.ext = os.path.splitext(filename)[-1]
+		if self.ext == '.mscx':
 			self.tree = et.parse(filename)
-		elif self.ext == 'mscz':
+		elif self.ext == '.mscz':
 			with ZipFile(filename, 'r') as zipfile:
-				mscx_entries = [ name for name in zipfile.namelist() if name.split('.')[-1:][0] == 'mscx']
+				mscx_entries = [ name for name in zipfile.namelist() if os.path.splitext(name)[-1] == '.mscx']
 				if len(mscx_entries):
 					if len(mscx_entries) > 1:
 						logging.warning('Score has multiple archived .mscx files')
-					self.mscx_entry = mscx_entries[0]
-					fob = zipfile.open(self.mscx_entry, 'r')
+					self.zip_mscx_entry = mscx_entries[0]
+					fob = zipfile.open(self.zip_mscx_entry, 'r')
 					self.tree = et.parse(fob)
+				else:
+					raise Exception("No mscx entries found in zip file")
 		else:
 			raise Exception("Unsupported file extension: " + self.ext)
 
 	def save(self):
-		if self.ext == 'mscx':
+		if self.ext == '.mscx':
 			self.tree.write(self.filename, xml_declaration=True, encoding='utf-8')
-		elif self.ext == 'mscz':
-			with io.BytesIO() as fob:
-				self.tree.write(fob)
-				with ZipFile(self.filename, 'w') as zipfile:
-					zipfile.writestr(self.mscx_entry, fob.getvalue())
+		elif self.ext == '.mscz':
+			_,temp_file = tempfile.mkstemp(suffix='.mscz')
+			os.rename(self.filename, temp_file)
+			try:
+				with io.BytesIO() as fob:
+					self.tree.write(fob)
+					with ZipFile(temp_file, 'r') as original_zip:
+						with ZipFile(self.filename, 'w') as new_zip:
+							for item in original_zip.infolist():
+								if item.filename == self.zip_mscx_entry:
+									new_zip.writestr(self.zip_mscx_entry, fob.getvalue())
+								else:
+									new_zip.writestr(item, original_zip.read(item.filename))
+			finally:
+				os.unlink(temp_file)
 
 	def dump(self):
 		dump(self.tree)
@@ -249,8 +261,7 @@ class Score():
 
 	@classmethod
 	def is_score(cls, filename):
-		ext = filename.split('.')[-1:][0]
-		return ext in ['mscx', 'mscz']
+		return os.path.splitext(filename)[-1] in ['.mscx', '.mscz']
 
 	def __str__(self):
 		return f'<Score "{self.filename}">'
