@@ -88,11 +88,18 @@ class Channel(SmartNode):
 
 	@property
 	def midi_port(self):
+		"""
+		Always returns the public (1-based) channel number.
+		"""
 		text = self.element_text('midiPort')
 		return -1 if text is None else int(text) + 1
 
 	@midi_port.setter
 	def midi_port(self, value):
+		"""
+		"value" must be the public (1-based) channel number.
+		The actual node value is set to one less.
+		"""
 		node = self.find('midiPort')
 		if node is None:
 			node = et.SubElement(self.element, 'midiPort')
@@ -100,11 +107,18 @@ class Channel(SmartNode):
 
 	@property
 	def midi_channel(self):
+		"""
+		Always returns the public (1-based) channel number.
+		"""
 		text = self.element_text('midiChannel')
 		return -1 if text is None else int(text) + 1
 
 	@midi_channel.setter
 	def midi_channel(self, value):
+		"""
+		"value" must be the public (1-based) channel number.
+		The actual node value is set to one less.
+		"""
 		node = self.find('midiChannel')
 		if node is None:
 			node = et.SubElement(self.element, 'midiChannel')

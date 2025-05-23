@@ -39,8 +39,8 @@ def main():
 				chan.midi_channel = mapped_channels[key][1]
 			else:
 				chan.midi_port = port_number
-				chan.midi_channel = channel_number - 1
-				mapped_channels[key] = (port_number, channel_number - 1)
+				chan.midi_channel = channel_number
+				mapped_channels[key] = (port_number, channel_number)
 				channel_number += 1
 
 	for inst in score.instruments():
