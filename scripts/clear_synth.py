@@ -10,8 +10,8 @@ def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type=str, help="Required argument")
 	logging.basicConfig(
-		level=logging.DEBUG,
-		format="[%(filename)24s:%(lineno)3d] %(message)s"
+		level = logging.DEBUG,
+		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 	options = p.parse_args()
 	score = Score(options.Filename)

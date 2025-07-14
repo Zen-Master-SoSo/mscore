@@ -15,8 +15,8 @@ def main():
 	p.add_argument("--compact", "-c", action="store_true", help="Reduce channels used by re-using channels for different parts using the same instrument")
 	p.add_argument("--dry-run", "-n", action="store_true", help="Just show port/channel layout")
 	logging.basicConfig(
-		level=logging.DEBUG,
-		format="[%(filename)24s:%(lineno)3d] %(message)s"
+		level = logging.DEBUG,
+		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 	options = p.parse_args()
 	score = Score(options.filename)

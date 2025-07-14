@@ -13,8 +13,8 @@ def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('filename', type=str, help="MuseScore4 .mscz / .mscx file")
 	logging.basicConfig(
-		level=logging.DEBUG,
-		format="[%(filename)24s:%(lineno)3d] %(message)s"
+		level = logging.DEBUG,
+		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 	options = p.parse_args()
 	score = Score(options.filename)
