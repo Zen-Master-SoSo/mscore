@@ -2,15 +2,33 @@
 #
 #  Copyright 2024 liyang <liyang@veronica>
 #
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#
+"""
+A python library for opening/inspecting/modifying MuseScore3 files.
+"""
 import os, sys, logging, configparser, glob, io
 import xml.etree.ElementTree as et
 from zipfile import ZipFile
 from pathlib import Path
 from sf2utils.sf2parse import Sf2File
 from console_quiet import ConsoleQuiet
-from smart_node import SmartNode
-from xmldump import dump
+from node_soso import SmartNode, dump
 
+__version__ = "1.0.0"
 
 CHANNEL_NAMES = [	'normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 					'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']

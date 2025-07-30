@@ -4,7 +4,6 @@
 #
 import os, logging, shutil, tempfile
 from subprocess import run, CalledProcessError
-from good_logging import log_error
 from mscore import Score
 
 
@@ -77,7 +76,7 @@ if __name__ == "__main__":
 		try:
 			run(['musescore3', '--export-to', test_export_file, test_file])
 		except CalledProcessError as cpe:
-			log_error(cpe)
+			print(cpe)
 		else:
 			test_export_score = Score(test_export_file)
 			assert_channel_sequence(test_export_score)
@@ -85,7 +84,7 @@ if __name__ == "__main__":
 			os.unlink(test_export_file)
 
 	except Exception as e:
-		log_error(e)
+		print(e)
 	finally:
 		os.unlink(test_file)
 
