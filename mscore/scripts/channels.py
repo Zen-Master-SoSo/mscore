@@ -24,4 +24,7 @@ def main():
 		for chan in inst.channels():
 			print('  %2d %-2d %s %s' % (chan.midi_port, chan.midi_channel, inst.name, chan.name))
 
+if __name__ == "__main__":
+	main()
+
 #  end mscore/scripts/channels.py

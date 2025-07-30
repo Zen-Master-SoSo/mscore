@@ -23,6 +23,11 @@ dependencies = ["sf2utils", "console_quiet", "node_soso"]
 [project.urls]
 Home = "https://github.com/Zen-Master-SoSo/mscore"
 
+[project.scripts]
+ms-channels = "mscore.scripts.channels:main"
+ms-clear-synth = "mscore.scripts.clear_fluidsynth:main"
+ms-port-partition = "mscore.scripts.port_partition:main"
+
 [tool.flit.module]
 name = "mscore"
 
