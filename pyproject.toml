@@ -3,11 +3,7 @@ requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-<<<<<<< HEAD
 name = "mscore3"
-=======
-name = "mscore"
->>>>>>> b70f59e9814c9a23c03a29371bba7b7658c5b9dd
 authors = [{name = "Leon Dionne", email = "ldionne@dridesign.sh.cn"}]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -27,12 +23,9 @@ dependencies = ["sf2utils", "console_quiet", "node_soso"]
 [project.urls]
 Home = "https://github.com/Zen-Master-SoSo/mscore"
 
-<<<<<<< HEAD
 [tool.flit.module]
 name = "mscore"
 
-=======
->>>>>>> b70f59e9814c9a23c03a29371bba7b7658c5b9dd
 [bumpver]
 current_version = "1.0.0"
 version_pattern = "MAJOR.MINOR.PATCH"
