@@ -1,6 +1,21 @@
-#  mscore/scripts/port_partition.py
+#  mscore/scripts/ms_port_partition.py
 #
-#  Copyright 2025 liyang <liyang@veronica>
+#  Copyright 2025 Leon Dionne <ldionne@dridesign.sh.cn>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
 #
 """
 Re-assigns MIDI port/channels, grouped by instrument.
@@ -11,9 +26,12 @@ from mscore import Score
 
 def main():
 	p = argparse.ArgumentParser()
-	p.add_argument('filename', type=str, help="MuseScore4 .mscz / .mscx file")
-	p.add_argument("--compact", "-c", action="store_true", help="Reduce channels used by re-using channels for different parts using the same instrument")
-	p.add_argument("--dry-run", "-n", action="store_true", help="Just show port/channel layout")
+	p.add_argument('filename', type = str, help = "MuseScore4 .mscz / .mscx file")
+	p.add_argument("--compact", "-c", action="store_true",
+		help = "Reduce channels used by re-using channels for different parts using the same instrument")
+	p.add_argument("--dry-run", "-n", action="store_true",
+		help = "Just show new port/channel layout")
+	p.epilog = __doc__
 	logging.basicConfig(
 		level = logging.DEBUG,
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
@@ -55,4 +73,4 @@ def main():
 if __name__ == "__main__":
 	main()
 
-#  end mscore/scripts/port_partition.py
+#  end mscore/scripts/ms_port_partition.py

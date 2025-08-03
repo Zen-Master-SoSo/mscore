@@ -24,6 +24,7 @@ import os, sys, logging, configparser, glob, io
 import xml.etree.ElementTree as et
 from zipfile import ZipFile
 from pathlib import Path
+from copy import deepcopy
 from sf2utils.sf2parse import Sf2File
 from console_quiet import ConsoleQuiet
 from node_soso import SmartNode, dump
@@ -41,6 +42,17 @@ class Part(SmartNode):
 
 	def instrument(self):
 		return Instrument.from_element(self.find('Instrument'))
+
+	def use_instrument(self, instrument):
+		if not isinstance(instrument, Instrument):
+			raise ValueError('Can only copy Instrument')
+		new_instrument_node = deepcopy(instrument.element)
+		old_instrument_node = self.find('Instrument')
+		self.element.remove(old_instrument_node)
+		self.element.insert(len(self.element), new_instrument_node)
+
+	def staffs(self):
+		return Staff.from_elements(self.findall('Staff'))
 
 	@property
 	def name(self):
@@ -64,6 +76,33 @@ class Instrument(SmartNode):
 
 	def musicxml_id(self):
 		return self.element_text('instrumentId')
+
+	def clear_synth(self):
+		for channel in self.findall('Channel'):
+			for node in channel.findall('controller'):
+				channel.remove(node)
+			for node in channel.findall('program'):
+				channel.remove(node)
+			for node in channel.findall('synti'):
+				channel.remove(node)
+
+	def remove_channel(self, name):
+		node = self.find(f'Channel[@name="{name}"]')
+		if node:
+			self.element.remove(node)
+
+	def add_channel(self, name, midi_port = 0, midi_channel = 0):
+		"""
+		Returns Channel
+		"""
+		if self.find(f'Channel[@name="{name}"]'):
+			raise RuntimeError(f'Channel "{name}" already exists')
+		new_channel_node = et.SubElement(self.element, 'Channel')
+		new_channel_node.set('name', name)
+		port_node = et.SubElement(new_channel_node, 'midiPort')
+		port_node.text = str(int(midi_port) - 1)
+		channel_node = et.SubElement(new_channel_node, 'midiChannel')
+		channel_node.text = str(int(midi_channel) - 1)
 
 	def __str__(self):
 		return f'<Instrument "{self.name}">'
@@ -101,8 +140,7 @@ class Channel(SmartNode):
 
 	@property
 	def name(self):
-		xmlname = self.attribute_value('name')
-		return 'normal' if xmlname is None else xmlname
+		return self.attribute_value('name', 'normal')
 
 	@property
 	def midi_port(self):
@@ -146,6 +184,42 @@ class Channel(SmartNode):
 		return f'<Channel "{self.name}">'
 
 
+class Staff(SmartNode):
+
+	@property
+	def color(self):
+		"""
+		Returns a dictionary of RBG values.
+		"""
+		node = self.find('color')
+		return None if node is None else {
+			'r'	: node.attrib['r'],
+			'g'	: node.attrib['g'],
+			'b'	: node.attrib['b'],
+			'a'	: node.attrib['a']
+		}
+
+	@color.setter
+	def color(self, rgba_dict):
+		"""
+		Set the color of this Staff.
+		rgba_dict must be a dict containing "r", "g", "b" and "a" keys, having integer
+		values in the range 0 - 255.
+		"""
+		node = self.child('color')
+		node.set('r', str(rgba_dict['r']))
+		node.set('g', str(rgba_dict['g']))
+		node.set('b', str(rgba_dict['b']))
+		node.set('a', str(rgba_dict['a']))
+
+	@property
+	def id(self):
+		return self.attribute_value('id')
+
+	def __str__(self):
+		return f'<Staff "{self.id}">'
+
+
 class Score():
 
 	__default_sfnames = None
@@ -184,6 +258,10 @@ class Score():
 		else:
 			raise Exception("Unsupported file extension: " + self.ext)
 
+	def save_as(self, filename):
+		self.filename = filename
+		self.save()
+
 	def save(self):
 		if self.ext == '.mscx':
 			self.tree.write(self.filename, xml_declaration=True, encoding='utf-8')
@@ -196,7 +274,7 @@ class Score():
 					zipfile.writestr(entry['info'], entry['data'])
 
 	def dump(self):
-		dump(self.tree)
+		dump(self.tree.getroot())
 
 	def find(self, path):
 		return self.tree.find(path)
@@ -212,6 +290,10 @@ class Score():
 
 	def channels(self):
 		return Channel.from_elements(self.findall('./Score/Part/Instrument/Channel'))
+
+	def staffs(self):
+		for part in self.parts():
+			yield from part.staffs()
 
 	def part(self, name):
 		for p in self.parts():
@@ -232,17 +314,27 @@ class Score():
 		return [ p.instrument().name for p in self.parts() ]
 
 	def sound_fonts(self):
-		return list(set( el.text for el in self.findall('.//Trackesizer/Fluid/val') ))
+		return list(set( el.text for el in self.findall('.//Synthesizer/Fluid/val') ))
 
 	@classmethod
 	def default_sound_fonts(cls):
 		if cls.__default_sfnames is None:
-			filename = os.path.join(str(Path.home()), '.local/share/MuseScore/MuseScore3/trackesizer.xml')
+			filename = os.path.join(str(Path.home()), '.local/share/MuseScore/MuseScore3/synthesizer.xml')
 			cls.__default_sfnames = [ node.text for node in et.parse(filename).findall('.//Fluid/val') ]
 		return cls.__default_sfnames
 
 	@classmethod
 	def ini_file(cls):
+		"""
+		Returns a ConfigParser object.
+		May be used like this:
+
+		cp = Score.ini_file()
+		for section in cp.sections():
+			print(f'Section "{section}"')
+			for option in cp.options(section):
+				print(f'  Option "{option}"')
+		"""
 		filename = os.path.join(str(Path.home()), '.config/MuseScore/MuseScore3.ini')
 		config = configparser.ConfigParser()
 		config.read(filename)
