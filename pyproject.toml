@@ -33,7 +33,7 @@ ms-port-partition = "mscore.scripts.ms_port_partition:main"
 name = "mscore"
 
 [bumpver]
-current_version = "1.0.2"
+current_version = "1.1.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
