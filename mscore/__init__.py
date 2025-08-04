@@ -75,9 +75,14 @@ class Score():
 				self.tree = et.parse(bob)
 		else:
 			raise Exception("Unsupported file extension: " + self.ext)
+		self.element = self.tree.getroot()
 
 	def save_as(self, filename):
+		ext = os.path.splitext(filename)[-1]
+		if ext == '.mscz' and self.ext == '.mscx':
+			raise RuntimeError('Cannot save score imported from .mscx to .mscz format')
 		self.filename = filename
+		self.ext = ext
 		self.save()
 
 	def save(self):
@@ -92,7 +97,7 @@ class Score():
 					zipfile.writestr(entry['info'], entry['data'])
 
 	def dump(self):
-		dump(self.tree.getroot())
+		dump(self.element)
 
 	def find(self, path):
 		return self.tree.find(path)
@@ -130,6 +135,19 @@ class Score():
 
 	def instrument_names(self):
 		return [ p.instrument().name for p in self.parts() ]
+
+	def meta_tags(self):
+		"""
+		Returns a list of MetaTag objects.
+		"""
+		return MetaTag.from_elements(self.findall('./Score/metaTag'))
+
+	def meta_tag(self, name):
+		"""
+		Returns a list of MetaTag objects.
+		"""
+		node = self.find(f'./Score/metaTag[@name="{name}"]')
+		return None if node is None else MetaTag(node)
 
 	def sound_fonts(self):
 		return list(set( el.text for el in self.findall('.//Synthesizer/Fluid/val') ))
@@ -284,6 +302,7 @@ class Instrument(SmartNode):
 		port_node.text = str(int(midi_port) - 1)
 		channel_node = et.SubElement(new_channel_node, 'midiChannel')
 		channel_node.text = str(int(midi_channel) - 1)
+		return Channel(new_channel_node)
 
 	def __str__(self):
 		return f'<Instrument "{self.name}">'
@@ -399,6 +418,24 @@ class Staff(SmartNode):
 
 	def __str__(self):
 		return f'<Staff "{self.id}">'
+
+
+class MetaTag(SmartNode):
+
+	@property
+	def name(self):
+		return self.attribute_value('name')
+
+	@property
+	def value(self):
+		return self.element.text
+
+	@value.setter
+	def value(self, value):
+		self.element.text = str(value)
+
+	def __str__(self):
+		return f'{self.name}: {self.value}'
 
 
 #  end mscore/__init__.py
