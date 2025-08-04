@@ -38,188 +38,6 @@ CHANNEL_NAMES = [	'normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 # ----------------------------
 # MuseScore classes
 
-class Part(SmartNode):
-
-	def instrument(self):
-		return Instrument.from_element(self.find('Instrument'))
-
-	def use_instrument(self, instrument):
-		if not isinstance(instrument, Instrument):
-			raise ValueError('Can only copy Instrument')
-		new_instrument_node = deepcopy(instrument.element)
-		old_instrument_node = self.find('Instrument')
-		self.element.remove(old_instrument_node)
-		self.element.insert(len(self.element), new_instrument_node)
-
-	def staffs(self):
-		return Staff.from_elements(self.findall('Staff'))
-
-	@property
-	def name(self):
-		return self.element_text('trackName')
-
-	def __str__(self):
-		return f'<Part "{self.name}">'
-
-
-class Instrument(SmartNode):
-
-	def channels(self):
-		return Channel.from_elements(self.findall('Channel'))
-
-	@property
-	def name(self):
-		name = self.element_text('longName')
-		if name is None:
-			name = self.element_text('trackName')
-		return name
-
-	def musicxml_id(self):
-		return self.element_text('instrumentId')
-
-	def clear_synth(self):
-		for channel in self.findall('Channel'):
-			for node in channel.findall('controller'):
-				channel.remove(node)
-			for node in channel.findall('program'):
-				channel.remove(node)
-			for node in channel.findall('synti'):
-				channel.remove(node)
-
-	def remove_channel(self, name):
-		node = self.find(f'Channel[@name="{name}"]')
-		if node:
-			self.element.remove(node)
-
-	def add_channel(self, name, midi_port = 0, midi_channel = 0):
-		"""
-		Returns Channel
-		"""
-		if self.find(f'Channel[@name="{name}"]'):
-			raise RuntimeError(f'Channel "{name}" already exists')
-		new_channel_node = et.SubElement(self.element, 'Channel')
-		new_channel_node.set('name', name)
-		port_node = et.SubElement(new_channel_node, 'midiPort')
-		port_node.text = str(int(midi_port) - 1)
-		channel_node = et.SubElement(new_channel_node, 'midiChannel')
-		channel_node.text = str(int(midi_channel) - 1)
-
-	def __str__(self):
-		return f'<Instrument "{self.name}">'
-
-
-class Channel(SmartNode):
-
-	CC_VOLUME		= 7;
-	CC_PAN			= 10;
-	CC_BANK_MSB		= 0;
-	CC_BANK_LSB		= 32;
-
-	def program(self):
-		el = self.find('program')
-		return None if el is None else el.attrib['value']
-
-	def bank_msb(self):
-		msb = self.controller_value(self.CC_BANK_MSB)
-		return -1 if msb is None else msb
-
-	def bank_lsb(self):
-		lsb = self.controller_value(self.CC_BANK_LSB)
-		return -1 if lsb is None else lsb
-
-	def controller_value(self, ccid):
-		el = self.find('controller[@ctrl="%s"]' % ccid)
-		return None if el is None else el.attrib['value']
-
-	def idstring(self):
-		return '%02d:%02d:%02d' % (
-			int(self.bank_msb()),
-			int(self.bank_lsb()),
-			int(self.program())
-		)
-
-	@property
-	def name(self):
-		return self.attribute_value('name', 'normal')
-
-	@property
-	def midi_port(self):
-		"""
-		Always returns the public (1-based) channel number.
-		"""
-		text = self.element_text('midiPort')
-		return -1 if text is None else int(text) + 1
-
-	@midi_port.setter
-	def midi_port(self, value):
-		"""
-		"value" must be the public (1-based) channel number.
-		The actual node value is set to one less.
-		"""
-		node = self.find('midiPort')
-		if node is None:
-			node = et.SubElement(self.element, 'midiPort')
-		node.text = str(int(value) - 1)
-
-	@property
-	def midi_channel(self):
-		"""
-		Always returns the public (1-based) channel number.
-		"""
-		text = self.element_text('midiChannel')
-		return -1 if text is None else int(text) + 1
-
-	@midi_channel.setter
-	def midi_channel(self, value):
-		"""
-		"value" must be the public (1-based) channel number.
-		The actual node value is set to one less.
-		"""
-		node = self.find('midiChannel')
-		if node is None:
-			node = et.SubElement(self.element, 'midiChannel')
-		node.text = str(int(value) - 1)
-
-	def __str__(self):
-		return f'<Channel "{self.name}">'
-
-
-class Staff(SmartNode):
-
-	@property
-	def color(self):
-		"""
-		Returns a dictionary of RBG values.
-		"""
-		node = self.find('color')
-		return None if node is None else {
-			'r'	: node.attrib['r'],
-			'g'	: node.attrib['g'],
-			'b'	: node.attrib['b'],
-			'a'	: node.attrib['a']
-		}
-
-	@color.setter
-	def color(self, rgba_dict):
-		"""
-		Set the color of this Staff.
-		rgba_dict must be a dict containing "r", "g", "b" and "a" keys, having integer
-		values in the range 0 - 255.
-		"""
-		node = self.child('color')
-		node.set('r', str(rgba_dict['r']))
-		node.set('g', str(rgba_dict['g']))
-		node.set('b', str(rgba_dict['b']))
-		node.set('a', str(rgba_dict['a']))
-
-	@property
-	def id(self):
-		return self.attribute_value('id')
-
-	def __str__(self):
-		return f'<Staff "{self.id}">'
-
-
 class Score():
 
 	__default_sfnames = None
@@ -389,6 +207,198 @@ class Score():
 
 	def __str__(self):
 		return f'<Score "{self.filename}">'
+
+
+class Part(SmartNode):
+
+	def instrument(self):
+		return Instrument.from_element(self.find('Instrument'))
+
+	def use_instrument(self, instrument):
+		if not isinstance(instrument, Instrument):
+			raise ValueError('Can only copy Instrument')
+		new_instrument_node = deepcopy(instrument.element)
+		old_instrument_node = self.find('Instrument')
+		self.element.remove(old_instrument_node)
+		self.element.insert(len(self.element), new_instrument_node)
+
+	def staffs(self):
+		return Staff.from_elements(self.findall('Staff'))
+
+	@property
+	def name(self):
+		return self.element_text('trackName')
+
+	def __str__(self):
+		return f'<Part "{self.name}">'
+
+
+class Instrument(SmartNode):
+
+	def channels(self):
+		return Channel.from_elements(self.findall('Channel'))
+
+	@property
+	def name(self):
+		return self.long_name or self.track_name
+
+	@property
+	def long_name(self):
+		return self.element_text('longName')
+
+	@property
+	def track_name(self):
+		return self.element_text('trackName')
+
+	@property
+	def short_name(self):
+		return self.element_text('shortName')
+
+	@property
+	def musicxml_id(self):
+		return self.element_text('instrumentId')
+
+	def clear_synth(self):
+		for channel in self.findall('Channel'):
+			for node in channel.findall('controller'):
+				channel.remove(node)
+			for node in channel.findall('program'):
+				channel.remove(node)
+			for node in channel.findall('synti'):
+				channel.remove(node)
+
+	def remove_channel(self, name):
+		node = self.find(f'Channel[@name="{name}"]')
+		if node:
+			self.element.remove(node)
+
+	def add_channel(self, name, midi_port = 0, midi_channel = 0):
+		"""
+		Returns Channel
+		"""
+		if self.find(f'Channel[@name="{name}"]'):
+			raise RuntimeError(f'Channel "{name}" already exists')
+		new_channel_node = et.SubElement(self.element, 'Channel')
+		new_channel_node.set('name', name)
+		port_node = et.SubElement(new_channel_node, 'midiPort')
+		port_node.text = str(int(midi_port) - 1)
+		channel_node = et.SubElement(new_channel_node, 'midiChannel')
+		channel_node.text = str(int(midi_channel) - 1)
+
+	def __str__(self):
+		return f'<Instrument "{self.name}">'
+
+
+class Channel(SmartNode):
+
+	CC_VOLUME		= 7;
+	CC_PAN			= 10;
+	CC_BANK_MSB		= 0;
+	CC_BANK_LSB		= 32;
+
+	def program(self):
+		el = self.find('program')
+		return None if el is None else el.attrib['value']
+
+	def bank_msb(self):
+		msb = self.controller_value(self.CC_BANK_MSB)
+		return -1 if msb is None else msb
+
+	def bank_lsb(self):
+		lsb = self.controller_value(self.CC_BANK_LSB)
+		return -1 if lsb is None else lsb
+
+	def controller_value(self, ccid):
+		el = self.find('controller[@ctrl="%s"]' % ccid)
+		return None if el is None else el.attrib['value']
+
+	def idstring(self):
+		return '%02d:%02d:%02d' % (
+			int(self.bank_msb()),
+			int(self.bank_lsb()),
+			int(self.program())
+		)
+
+	@property
+	def name(self):
+		return self.attribute_value('name', 'normal')
+
+	@property
+	def midi_port(self):
+		"""
+		Always returns the public (1-based) channel number.
+		"""
+		text = self.element_text('midiPort')
+		return -1 if text is None else int(text) + 1
+
+	@midi_port.setter
+	def midi_port(self, value):
+		"""
+		"value" must be the public (1-based) channel number.
+		The actual node value is set to one less.
+		"""
+		node = self.find('midiPort')
+		if node is None:
+			node = et.SubElement(self.element, 'midiPort')
+		node.text = str(int(value) - 1)
+
+	@property
+	def midi_channel(self):
+		"""
+		Always returns the public (1-based) channel number.
+		"""
+		text = self.element_text('midiChannel')
+		return -1 if text is None else int(text) + 1
+
+	@midi_channel.setter
+	def midi_channel(self, value):
+		"""
+		"value" must be the public (1-based) channel number.
+		The actual node value is set to one less.
+		"""
+		node = self.find('midiChannel')
+		if node is None:
+			node = et.SubElement(self.element, 'midiChannel')
+		node.text = str(int(value) - 1)
+
+	def __str__(self):
+		return f'<Channel "{self.name}">'
+
+
+class Staff(SmartNode):
+
+	@property
+	def color(self):
+		"""
+		Returns a dictionary of RBG values.
+		"""
+		node = self.find('color')
+		return None if node is None else {
+			'r'	: node.attrib['r'],
+			'g'	: node.attrib['g'],
+			'b'	: node.attrib['b'],
+			'a'	: node.attrib['a']
+		}
+
+	@color.setter
+	def color(self, rgba_dict):
+		"""
+		Set the color of this Staff.
+		rgba_dict must be a dict containing "r", "g", "b" and "a" keys, having integer
+		values in the range 0 - 255.
+		"""
+		node = self.child('color')
+		node.set('r', str(rgba_dict['r']))
+		node.set('g', str(rgba_dict['g']))
+		node.set('b', str(rgba_dict['b']))
+		node.set('a', str(rgba_dict['a']))
+
+	@property
+	def id(self):
+		return self.attribute_value('id')
+
+	def __str__(self):
+		return f'<Staff "{self.id}">'
 
 
 #  end mscore/__init__.py
