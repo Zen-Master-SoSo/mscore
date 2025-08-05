@@ -334,25 +334,32 @@ class Channel(SmartNode):
 
 	def program(self):
 		el = self.find('program')
-		return None if el is None else el.attrib['value']
+		return None if el is None else int(el.attrib['value'])
 
 	def bank_msb(self):
-		msb = self.controller_value(self.CC_BANK_MSB)
-		return -1 if msb is None else msb
+		return self.controller_value(self.CC_BANK_MSB, int)
 
 	def bank_lsb(self):
-		lsb = self.controller_value(self.CC_BANK_LSB)
-		return -1 if lsb is None else lsb
+		return self.controller_value(self.CC_BANK_LSB, int)
 
-	def controller_value(self, ccid):
-		el = self.find('controller[@ctrl="%s"]' % ccid)
-		return None if el is None else el.attrib['value']
+	def controller_value(self, ccid, type_ = None):
+		el = self.find(f'controller[@ctrl="{ccid}"]')
+		return None if el is None \
+			else el.attrib['value'] if type_ is None \
+			else type_(el.attrib['value'])
+
+	def set_controller_value(self, ccid, value):
+		el = self.find(f'controller[@ctrl="{ccid}"]')
+		if el is None:
+			el = et.SubElement(self.element, 'controller')
+			el.set('ctrl', ccid)
+		el.set('value', value)
 
 	def idstring(self):
 		return '%02d:%02d:%02d' % (
-			int(self.bank_msb()),
-			int(self.bank_lsb()),
-			int(self.program())
+			self.bank_msb() or -1,
+			self.bank_lsb() or -1,
+			self.program() or -1
 		)
 
 	@property
@@ -365,7 +372,7 @@ class Channel(SmartNode):
 		Always returns the public (1-based) channel number.
 		"""
 		text = self.element_text('midiPort')
-		return -1 if text is None else int(text) + 1
+		return None if text is None else int(text) + 1
 
 	@midi_port.setter
 	def midi_port(self, value):
@@ -384,7 +391,7 @@ class Channel(SmartNode):
 		Always returns the public (1-based) channel number.
 		"""
 		text = self.element_text('midiChannel')
-		return -1 if text is None else int(text) + 1
+		return None if text is None else int(text) + 1
 
 	@midi_channel.setter
 	def midi_channel(self, value):
@@ -396,6 +403,30 @@ class Channel(SmartNode):
 		if node is None:
 			node = et.SubElement(self.element, 'midiChannel')
 		node.text = str(int(value) - 1)
+
+	@property
+	def volume(self):
+		return self.controller_value(self.CC_VOLUME, int)
+
+	@volume.setter
+	def volume(self, value):
+		self.set_controller_value(self.CC_VOLUME, str(value))
+
+	@property
+	def balance(self):
+		return self.controller_value(self.CC_BALANCE, int)
+
+	@balance.setter
+	def balance(self, value):
+		self.set_controller_value(self.CC_BALANCE, str(value))
+
+	@property
+	def pan(self):
+		return self.controller_value(self.CC_PAN, int)
+
+	@pan.setter
+	def pan(self, value):
+		self.set_controller_value(self.CC_PAN, str(value))
 
 	def __str__(self):
 		return f'<Channel "{self.name}">'
