@@ -119,16 +119,16 @@ class Score():
 			yield from part.staffs()
 
 	def part(self, name):
-		for p in self.parts():
-			if p.name == name:
-				return p
+		for part in self.parts():
+			if part.name == name:
+				return part
 
 	def part_names(self):
-		return [ p.name for p in self.parts() ]
+		return [ part.name for part in self.parts() ]
 
 	def duplicate_part_names(self):
 		a = self.part_names()
-		return [ name for name in list(set(a)) if a.count(name) > 1]
+		return [ name for name in set(a) if a.count(name) > 1]
 
 	def has_duplicate_part_names(self):
 		return len(self.duplicate_part_names()) > 0
@@ -254,7 +254,23 @@ class Part(SmartNode):
 class Instrument(SmartNode):
 
 	def channels(self):
+		"""
+		Returns list of Channel objects.
+		"""
 		return Channel.from_elements(self.findall('Channel'))
+
+	def channel_names(self):
+		"""
+		Returns all channels' name, including duplicates, if any.
+		"""
+		return [ channel.name for channel in self.channels() ]
+
+	def duplicate_channel_names(self):
+		a = self.channel_names()
+		return [ name for name in set(a) if a.count(name) > 1]
+
+	def has_duplicate_channel_names(self):
+		return len(self.duplicate_channel_names()) > 0
 
 	@property
 	def name(self):
@@ -311,6 +327,7 @@ class Instrument(SmartNode):
 class Channel(SmartNode):
 
 	CC_VOLUME		= 7;
+	CC_BALANCE		= 8;
 	CC_PAN			= 10;
 	CC_BANK_MSB		= 0;
 	CC_BANK_LSB		= 32;
