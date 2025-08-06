@@ -223,6 +223,9 @@ class Score():
 	def is_score(cls, filename):
 		return os.path.splitext(filename)[-1] in ['.mscx', '.mscz']
 
+	def print(self):
+		print(et.tostring(self.element).decode())
+
 	def __str__(self):
 		return f'<Score "{self.filename}">'
 
@@ -306,7 +309,7 @@ class Instrument(SmartNode):
 		if node:
 			self.element.remove(node)
 
-	def add_channel(self, name, midi_port = 0, midi_channel = 0):
+	def add_channel(self, name):
 		"""
 		Returns Channel
 		"""
@@ -314,10 +317,6 @@ class Instrument(SmartNode):
 			raise RuntimeError(f'Channel "{name}" already exists')
 		new_channel_node = et.SubElement(self.element, 'Channel')
 		new_channel_node.set('name', name)
-		port_node = et.SubElement(new_channel_node, 'midiPort')
-		port_node.text = str(int(midi_port) - 1)
-		channel_node = et.SubElement(new_channel_node, 'midiChannel')
-		channel_node.text = str(int(midi_channel) - 1)
 		return Channel(new_channel_node)
 
 	def __str__(self):
@@ -352,7 +351,7 @@ class Channel(SmartNode):
 		el = self.find(f'controller[@ctrl="{ccid}"]')
 		if el is None:
 			el = et.SubElement(self.element, 'controller')
-			el.set('ctrl', ccid)
+			el.set('ctrl', str(ccid))
 		el.set('value', value)
 
 	def idstring(self):
