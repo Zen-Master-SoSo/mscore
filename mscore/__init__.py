@@ -275,6 +275,15 @@ class Instrument(SmartNode):
 	def has_duplicate_channel_names(self):
 		return len(self.duplicate_channel_names()) > 0
 
+	def dedupe_channels(self):
+		unique_channel_names = set(self.channel_names())
+		channels = self.channels()
+		for channel in channels:
+			if channel.name in unique_channel_names:
+				unique_channel_names.remove(channel.name)
+			else:
+				self.element.remove(channel.element)
+
 	@property
 	def name(self):
 		return self.long_name or self.track_name
