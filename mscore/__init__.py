@@ -112,7 +112,9 @@ class Score():
 		return Instrument.from_elements(self.findall('./Score/Part/Instrument'))
 
 	def channels(self):
-		return Channel.from_elements(self.findall('./Score/Part/Instrument/Channel'))
+		return [ channel \
+			for instrument in self.instruments() \
+			for channel in instrument.channels() ]
 
 	def staffs(self):
 		for part in self.parts():
@@ -260,7 +262,11 @@ class Instrument(SmartNode):
 		"""
 		Returns list of Channel objects.
 		"""
-		return Channel.from_elements(self.findall('Channel'))
+		channels = Channel.from_elements(self.findall('Channel'))
+		name = self.name
+		for channel in channels:
+			channel.instrument_name = name
+		return channels
 
 	def channel_names(self):
 		"""

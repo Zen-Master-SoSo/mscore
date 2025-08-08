@@ -38,7 +38,7 @@ def main():
 	)
 	options = p.parse_args()
 	score = Score(options.filename)
-	mapped_channels = {}			# key instrument_name.articulation, value tup(port_number, channel_number)
+	mapped_channels = {}			# key "instrument_name.channel_name", value tup(port_number, channel_number)
 	port_number = 1
 	channel_number = 1
 	for part in score.parts():
