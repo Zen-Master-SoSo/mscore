@@ -21,7 +21,9 @@
 A python library for opening/inspecting/modifying MuseScore3 files.
 """
 import os, sys, logging, configparser, glob, io
+from os.path import join, basename, splitext
 import xml.etree.ElementTree as et
+from functools import cache
 from zipfile import ZipFile
 from pathlib import Path
 from copy import deepcopy
@@ -31,8 +33,79 @@ from node_soso import SmartNode, dump
 
 __version__ = "1.6.0"
 
-CHANNEL_NAMES = [	'normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
-					'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']
+CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
+				 'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']
+DEFAULT_VOICE	= 'normal'
+
+
+def is_score(filename):
+	return splitext(filename)[-1] in ['.mscx', '.mscz']
+
+def ini_file():
+	"""
+	Returns a ConfigParser object, which may be used like this:
+
+	cp = ini_file()
+	for section in cp.sections():
+		print(f'Section "{section}"')
+		for option in cp.options(section):
+			print(f'  Option "{option}"')
+
+	The ConfigParser may be used to modify the .ini file, but that is outside of
+	the (current) scope of this project. USE AT YOUR OWN RISK!
+	"""
+	filename = join(str(Path.home()), '.config/MuseScore/MuseScore3.ini')
+	config = configparser.ConfigParser()
+	config.read(filename)
+	return config
+
+@cache
+def default_sound_fonts():
+	filename = join(str(Path.home()), '.local/share/MuseScore/MuseScore3/synthesizer.xml')
+	return [ node.text for node in et.parse(filename).findall('.//Fluid/val') ]
+
+@cache
+def user_soundfont_dirs():
+	return ini_file()['application']['paths\mySoundfonts'].strip('"').split(';')
+
+@cache
+def system_soundfont_dirs():
+	return ['/usr/share/sounds/sf2']
+
+@cache
+def user_soundfonts():
+	return list(_iter_sf_paths(user_soundfont_dirs()))
+
+@cache
+def system_soundfonts():
+	return list(_iter_sf_paths(system_soundfont_dirs()))
+
+@cache
+def _user_sfpaths():
+	return { basename(path):path for path in user_soundfonts() }
+
+@cache
+def _system_sfpaths():
+	return { basename(path):path for path in system_soundfonts() }
+
+@cache
+def sf2(sf_name):
+	if sf_name in _user_sfpaths():
+		logging.debug('Inspecting user soundfont "%s"', sf_name)
+		return _get_parsed_sf2(_user_sfpaths()[sf_name])
+	if sf_name in _system_sfpaths():
+		logging.debug('Inspecting user system "%s"', sf_name)
+		return _get_parsed_sf2(_system_sfpaths()[sf_name])
+	raise Exception('SoundFont "%s" not found', sf_name)
+
+def _iter_sf_paths(dirs):
+	for d in dirs:
+		yield from glob.glob(f'{d}/*.sf2')
+
+def _get_parsed_sf2(filename):
+	with open(filename, 'rb') as file:
+		with ConsoleQuiet():
+			return Sf2File(file)
 
 
 # ----------------------------
@@ -54,7 +127,7 @@ class Score():
 
 	def __init__(self, filename):
 		self.filename = filename
-		self.ext = os.path.splitext(filename)[-1]
+		self.ext = splitext(filename)[-1]
 		if self.ext == '.mscx':
 			self.tree = et.parse(filename)
 		elif self.ext == '.mscz':
@@ -65,12 +138,12 @@ class Score():
 						'data'	:zipfile.read(info.filename)
 					} for info in zipfile.infolist()
 				]
-			for idx in range(len(self.__zip_entries)):
-				if os.path.splitext(self.__zip_entries[idx]['info'].filename)[-1] == '.mscx':
+			for idx, entry in enumerate(self.__zip_entries):
+				if splitext(entry['info'].filename)[-1] == '.mscx':
 					self.__zip_mscx_index = idx
 					break
 			if self.__zip_mscx_index is None:
-				raise Exception("No mscx entries found in zip file")
+				raise RuntimeError("No mscx entries found in zip file")
 			with io.BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
 				self.tree = et.parse(bob)
 		else:
@@ -78,7 +151,7 @@ class Score():
 		self.element = self.tree.getroot()
 
 	def save_as(self, filename):
-		ext = os.path.splitext(filename)[-1]
+		ext = splitext(filename)[-1]
 		if ext == '.mscz' and self.ext == '.mscx':
 			raise RuntimeError('Cannot save score imported from .mscx to .mscz format')
 		self.filename = filename
@@ -124,6 +197,7 @@ class Score():
 		for part in self.parts():
 			if part.name == name:
 				return part
+		return None
 
 	def part_names(self):
 		return [ part.name for part in self.parts() ]
@@ -153,77 +227,6 @@ class Score():
 
 	def sound_fonts(self):
 		return list(set( el.text for el in self.findall('.//Synthesizer/Fluid/val') ))
-
-	@classmethod
-	def default_sound_fonts(cls):
-		if cls.__default_sfnames is None:
-			filename = os.path.join(str(Path.home()), '.local/share/MuseScore/MuseScore3/synthesizer.xml')
-			cls.__default_sfnames = [ node.text for node in et.parse(filename).findall('.//Fluid/val') ]
-		return cls.__default_sfnames
-
-	@classmethod
-	def ini_file(cls):
-		"""
-		Returns a ConfigParser object.
-		May be used like this:
-
-		cp = Score.ini_file()
-		for section in cp.sections():
-			print(f'Section "{section}"')
-			for option in cp.options(section):
-				print(f'  Option "{option}"')
-		"""
-		filename = os.path.join(str(Path.home()), '.config/MuseScore/MuseScore3.ini')
-		config = configparser.ConfigParser()
-		config.read(filename)
-		return config
-
-	@classmethod
-	def user_soundfont_dirs(cls):
-		return cls.ini_file()['application']['paths\mySoundfonts'].strip('"').split(';')
-
-	@classmethod
-	def system_soundfont_dirs(cls):
-		return ['/usr/share/sounds/sf2']
-
-	@classmethod
-	def _iter_sf_paths(cls, dirs):
-		for d in dirs:
-			yield from glob.glob(f'{d}/*.sf2')
-
-	@classmethod
-	def user_soundfonts(cls):
-		return list(cls._iter_sf_paths(cls.user_soundfont_dirs()))
-
-	@classmethod
-	def system_soundfonts(cls):
-		return list(cls._iter_sf_paths(cls.system_soundfont_dirs()))
-
-	@classmethod
-	def sf2(cls, sf_name):
-		if cls.__user_sfpaths is None:
-			cls.__user_sfpaths = { os.path.basename(path):path for path in cls.user_soundfonts() }
-			cls.__sys_sfpaths = { os.path.basename(path):path for path in cls.system_soundfonts() }
-		if sf_name not in cls.__sf2s:
-			if sf_name in cls.__user_sfpaths:
-				logging.debug('Inspecting user soundfont "%s"', sf_name)
-				cls.__sf2s[sf_name] = cls._get_parsed_sf2(cls.__user_sfpaths[sf_name])
-			elif sf_name in cls.__sys_sfpaths:
-				logging.debug('Inspecting user system "%s"', sf_name)
-				cls.__sf2s[sf_name] = cls._get_parsed_sf2(cls.__sys_sfpaths[sf_name])
-			else:
-				raise Exception('SoundFont "%s" not found', sf_name)
-		return cls.__sf2s[sf_name]
-
-	@classmethod
-	def _get_parsed_sf2(cls, filename):
-		with open(filename, 'rb') as file:
-			with ConsoleQuiet():
-				return Sf2File(file)
-
-	@classmethod
-	def is_score(cls, filename):
-		return os.path.splitext(filename)[-1] in ['.mscx', '.mscz']
 
 	def print(self):
 		print(et.tostring(self.element).decode())
@@ -340,11 +343,11 @@ class Instrument(SmartNode):
 
 class Channel(SmartNode):
 
-	CC_VOLUME		= 7;
-	CC_BALANCE		= 8;
-	CC_PAN			= 10;
-	CC_BANK_MSB		= 0;
-	CC_BANK_LSB		= 32;
+	CC_VOLUME		= 7
+	CC_BALANCE		= 8
+	CC_PAN			= 10
+	CC_BANK_MSB		= 0
+	CC_BANK_LSB		= 32
 
 	def program(self):
 		el = self.find('program')

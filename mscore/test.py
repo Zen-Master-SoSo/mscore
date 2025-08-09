@@ -4,7 +4,7 @@
 #
 import os, logging, shutil, tempfile
 from subprocess import run, CalledProcessError
-from mscore import Score
+from mscore import *
 
 
 def channel_repr(score):
@@ -26,10 +26,10 @@ def assert_channel_sequence(score):
 if __name__ == "__main__":
 	log_format = "[%(filename)24s:%(lineno)-4d] %(levelname)-8s %(message)score"
 	logging.basicConfig(level = logging.DEBUG, format = log_format)
-	Score.user_soundfont_dirs()
-	Score.user_soundfonts()
-	Score.system_soundfont_dirs()
-	Score.system_soundfonts()
+	print('user_soundfont_dirs', user_soundfont_dirs())
+	print('user_soundfonts', user_soundfonts())
+	print('system_soundfont_dirs', system_soundfont_dirs())
+	print('system_soundfonts', system_soundfonts())
 
 	score_file = os.path.join(os.path.dirname(__file__), 'res', 'score.mscz')
 	score = Score(score_file)
