@@ -23,10 +23,12 @@ Match instrument names in a sort of fuzzy way.
 import re
 from collections import namedtuple
 from functools import cache
+from operator import itemgetter
 from mscore import DEFAULT_VOICE
 
 
 InstrumentVoice = namedtuple('InstrumentVoice', ['instrument_name', 'voice'])
+
 SPLIT_WORDS_REGEX = '[^\w]'
 NUMBER_EQUIVALENTS = [
 	['1', 'i', '1st', 'first', 'one'],
@@ -53,6 +55,10 @@ def score_sort(ref_name:str, instrument_names:list) -> list:
 
 	"instrument_names" must be a list of type str.
 	"""
+	return sorted([ (score(ref_name, instrument_name), instrument_name) \
+		for instrument_name in instrument_names ],
+		key=itemgetter(0), reverse = True)
+
 
 def voice_match(name1:str, voice1:str, name2:str, voice2:str) -> float:
 	"""
@@ -60,12 +66,17 @@ def voice_match(name1:str, voice1:str, name2:str, voice2:str) -> float:
 	"""
 	return 0 if voice1 != voice2 else score(name1, name2)
 
-def voice_score_sort(name:str, voice:str, inst_voice_tuples:list) -> list:
+
+def voice_score_sort(ref_name:str, ref_voice:str, inst_voice_tuples:list) -> list:
 	"""
 	Returns a list of tuples (score, instrument_name, voice) for every given (instrument_name, voice) tuple.
 
 	"inst_voice_tuples" must be a tuple of type InstrumentVoice.
 	"""
+	return sorted([ (voice_match(ref_name, ref_voice, tup.instrument_name, tup.voice), tup) \
+		for tup in inst_voice_tuples ],
+		key=itemgetter(0), reverse = True)
+
 
 @cache
 def _name_parts(instrument_name:str) -> set:
@@ -79,6 +90,7 @@ def _name_parts(instrument_name:str) -> set:
 	"""
 	return set( _number(word) or word for word in re.split(SPLIT_WORDS_REGEX, instrument_name.lower()) )
 
+
 @cache
 def _number(word:str):
 	"""
@@ -89,5 +101,6 @@ def _number(word:str):
 		if word in list_:
 			return i + 1
 	return None
+
 
 #  end mscore/fuzzy_match.py
