@@ -38,6 +38,27 @@ CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 DEFAULT_VOICE	= 'normal'
 
 
+class VoiceName:
+	"""
+	Simply holds a pair of properties:
+		"instrument_name", "voice"
+	...and provides a string representation.
+
+	Comparison may be made with "==", i.e.
+		if voicename1 == voicename2:
+	"""
+
+	def __init__(self, instrument_name, voice):
+		self.instrument_name = instrument_name
+		self.voice = voice
+
+	def __str__(self):
+		return f'{self.instrument_name} ({self.voice or DEFAULT_VOICE})'
+
+	def __eq__(self, other):
+		return self.instrument_name == other.instrument_name \
+			and self.voice == other.voice
+
 def is_score(filename):
 	return splitext(filename)[-1] in ['.mscx', '.mscz']
 
@@ -96,7 +117,7 @@ def sf2(sf_name):
 	if sf_name in _system_sfpaths():
 		logging.debug('Inspecting user system "%s"', sf_name)
 		return _get_parsed_sf2(_system_sfpaths()[sf_name])
-	raise Exception('SoundFont "%s" not found', sf_name)
+	raise Exception(f'SoundFont "{sf_name}" not found')
 
 def _iter_sf_paths(dirs):
 	for d in dirs:
@@ -147,7 +168,7 @@ class Score():
 			with io.BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
 				self.tree = et.parse(bob)
 		else:
-			raise Exception("Unsupported file extension: " + self.ext)
+			raise ValueError('Unsupported file extension: "{self.ext}"')
 		self.element = self.tree.getroot()
 
 	def save_as(self, filename):
@@ -382,6 +403,10 @@ class Channel(SmartNode):
 	@property
 	def name(self):
 		return self.attribute_value('name', 'normal')
+
+	@property
+	def voice_name(self):
+		return VoiceName(self.instrument_name, self.name)
 
 	@property
 	def midi_port(self):
