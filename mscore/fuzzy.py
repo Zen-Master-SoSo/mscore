@@ -22,7 +22,10 @@ Match instrument names in a sort of fuzzy way.
 """
 import re, logging
 from collections import namedtuple
-from functools import cache
+try:
+	from functools import cache
+except ImportError:
+	from functools import lru_cache as cache
 from operator import attrgetter
 from mscore import VoiceName
 

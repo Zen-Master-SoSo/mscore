@@ -22,7 +22,7 @@
 #  Copyright 2025 Leon Dionne <ldionne@dridesign.sh.cn>
 #
 """
-Displays a score's MIDI port/channels
+Displays a score's MIDI port/channels.
 """
 import logging
 import argparse

@@ -23,7 +23,10 @@ A python library for opening/inspecting/modifying MuseScore3 files.
 import os, sys, logging, configparser, glob, io
 from os.path import join, basename, splitext
 import xml.etree.ElementTree as et
-from functools import cache
+try:
+	from functools import cache
+except ImportError:
+	from functools import lru_cache as cache
 from zipfile import ZipFile
 from pathlib import Path
 from copy import deepcopy

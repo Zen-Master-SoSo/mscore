@@ -19,6 +19,9 @@
 #
 """
 Changes the staff colors.
+
+By default, staff colors are changed to a medium gray, allowing notes to stand
+out with lines still visible.
 """
 import logging
 import argparse

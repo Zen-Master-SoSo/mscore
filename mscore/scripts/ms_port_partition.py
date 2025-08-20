@@ -18,7 +18,7 @@
 #  MA 02110-1301, USA.
 #
 """
-Re-assigns MIDI port/channels, grouped by instrument.
+Re-assigns MIDI port/channels grouped by instrument.
 """
 import logging
 import argparse
