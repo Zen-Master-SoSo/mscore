@@ -32,7 +32,7 @@ from zipfile import ZipFile
 from copy import deepcopy
 from sf2utils.sf2parse import Sf2File
 from console_quiet import ConsoleQuiet
-from node_soso import SmartNode, dump
+from node_soso import SmartNode, SmartTree
 
 __version__ = "1.7.2"
 
@@ -141,7 +141,7 @@ def _get_parsed_sf2(filename):
 # ----------------------------
 # MuseScore classes
 
-class Score():
+class Score(SmartTree):
 
 	__default_sfnames = None
 	__user_sfpaths = None
@@ -199,15 +199,6 @@ class Score():
 				for entry in self.__zip_entries:
 					zipfile.writestr(entry['info'], entry['data'])
 
-	def dump(self):
-		dump(self.element)
-
-	def find(self, path):
-		return self.tree.find(path)
-
-	def findall(self, path):
-		return self.tree.findall(path)
-
 	def parts(self):
 		return Part.from_elements(self.findall('./Score/Part'))
 
@@ -257,9 +248,6 @@ class Score():
 
 	def sound_fonts(self):
 		return list(set( el.text for el in self.findall('.//Synthesizer/Fluid/val') ))
-
-	def print(self):
-		print(et.tostring(self.element).decode())
 
 	def __str__(self):
 		return f'<Score "{self.filename}">'

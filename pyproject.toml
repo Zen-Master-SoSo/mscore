@@ -14,7 +14,7 @@ classifiers = [
 	"Topic :: Multimedia :: Sound/Audio :: MIDI"
 ]
 dynamic = ["version", "description"]
-dependencies = ["sf2utils", "appdirs", "console_quiet", "node_soso"]
+dependencies = ["sf2utils", "appdirs", "console_quiet", "node_soso >= 1.2.0"]
 
 [project.urls]
 Home = "https://github.com/Zen-Master-SoSo/mscore"
