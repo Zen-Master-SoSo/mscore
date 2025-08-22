@@ -22,13 +22,13 @@ A python library for opening/inspecting/modifying MuseScore3 files.
 """
 import os, sys, logging, configparser, glob, io
 from os.path import join, basename, splitext
+from appdirs import user_config_dir, user_data_dir
 import xml.etree.ElementTree as et
 try:
 	from functools import cache
 except ImportError:
 	from functools import lru_cache as cache
 from zipfile import ZipFile
-from pathlib import Path
 from copy import deepcopy
 from sf2utils.sf2parse import Sf2File
 from console_quiet import ConsoleQuiet
@@ -78,14 +78,20 @@ def ini_file():
 	The ConfigParser may be used to modify the .ini file, but that is outside of
 	the (current) scope of this project. USE AT YOUR OWN RISK!
 	"""
-	filename = join(str(Path.home()), '.config/MuseScore/MuseScore3.ini')
+	filename = join(user_config_dir('MuseScore3'), 'MuseScore3.ini')
 	config = configparser.ConfigParser()
 	config.read(filename)
 	return config
 
+def instruments_file():
+	"""
+	Returns (str) path to "instruments.xml"
+	"""
+	return join(user_config_dir('MuseScore3'), 'instruments.xml')
+
 @cache
 def default_sound_fonts():
-	filename = join(str(Path.home()), '.local/share/MuseScore/MuseScore3/synthesizer.xml')
+	filename = join(user_data_dir('MuseScore'), 'MuseScore3', 'synthesizer.xml')
 	return [ node.text for node in et.parse(filename).findall('.//Fluid/val') ]
 
 @cache
