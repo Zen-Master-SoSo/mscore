@@ -29,7 +29,7 @@ from mscore import Score
 
 def main():
 	p = argparse.ArgumentParser()
-	p.add_argument('Filename', type = str,
+	p.add_argument('Filename', type = str, nargs = '+',
 		help = "MuseScore3 file (.mscz or .mscx)")
 	p.add_argument('-c', '--color', type = str, default = "#888",
 		help = "Color value in #rgba format")
@@ -39,26 +39,25 @@ def main():
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 	options = p.parse_args()
-	score = Score(options.Filename)
-	h = options.color.lstrip('#')
-	if len(h) == 3:
-		r, g, b = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(3))
-		a = 255
-	elif len(h) == 4:
-		r, g, b, a = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(4))
-	elif len(h) == 6:
-		r, g, b = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-		a = 255
-	elif len(h) == 8:
-		r, g, b, a = tuple(int(h[i:i+2], 16) for i in (0, 2, 4, 6))
-	else:
-		p.error(f'"{options.Color}" is not a valid Color')
-	color_dict = { 'r':r, 'g':g, 'b':b, 'a':a }
-	for staff in score.staffs():
-		staff.color = color_dict
-	score.save()
+	for filename in options.Filename:
+		score = Score(filename)
+		h = options.color.lstrip('#')
+		if len(h) == 3:
+			r, g, b = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(3))
+			a = 255
+		elif len(h) == 4:
+			r, g, b, a = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(4))
+		elif len(h) == 6:
+			r, g, b = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+			a = 255
+		elif len(h) == 8:
+			r, g, b, a = tuple(int(h[i:i+2], 16) for i in (0, 2, 4, 6))
+		else:
+			p.error(f'"{options.Color}" is not a valid Color')
+		color_dict = { 'r':r, 'g':g, 'b':b, 'a':a }
+		for staff in score.staffs():
+			staff.color = color_dict
+		score.save()
 
-if __name__ == "__main__":
-	main()
 
 #  end mscore/scripts/ms_colorize.py
