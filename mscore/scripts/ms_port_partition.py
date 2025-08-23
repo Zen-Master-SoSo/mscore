@@ -31,12 +31,15 @@ def main():
 		help = "Reduce channels used by re-using channels for different parts using the same instrument")
 	p.add_argument("--dry-run", "-n", action="store_true",
 		help = "Just show new port/channel layout")
+	p.add_argument("--verbose", "-v", action="store_true",
+		help="Show more detailed debug information")
 	p.epilog = __doc__
+	options = p.parse_args()
 	logging.basicConfig(
-		level = logging.DEBUG,
+		level = logging.DEBUG if options.verbose else logging.ERROR,
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
-	options = p.parse_args()
+
 	score = Score(options.filename)
 	mapped_channels = {}			# key "instrument_name.channel_name", value tup(port_number, channel_number)
 	port_number = 1

@@ -28,12 +28,15 @@ def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type = str,
 		help = "MuseScore3 file (.mscz or .mscx)")
+	p.add_argument("--verbose", "-v", action="store_true",
+		help="Show more detailed debug information")
 	p.epilog = __doc__
+	options = p.parse_args()
 	logging.basicConfig(
-		level = logging.DEBUG,
+		level = logging.DEBUG if options.verbose else logging.ERROR,
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
-	options = p.parse_args()
+
 	score = Score(options.Filename)
 	for instrument in score.instruments():
 		instrument.clear_synth()

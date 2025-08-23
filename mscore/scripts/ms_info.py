@@ -1,4 +1,4 @@
-#  mscore/scripts/ms_colorize.py
+#  mscore/scripts/ms_info.py
 #
 #  Copyright 2025 Leon Dionne <ldionne@dridesign.sh.cn>
 #
@@ -18,21 +18,19 @@
 #  MA 02110-1301, USA.
 #
 """
-Changes the staff colors.
-
-By default, staff colors are changed to a medium gray, allowing notes to stand
-out with lines still visible.
+Show various information about a MuseScore3 score file.
 """
-import logging
-import argparse
+import logging, sys, argparse
 from mscore import Score
 
 def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type = str, nargs = '+',
 		help = "MuseScore3 file (.mscz or .mscx)")
-	p.add_argument('-c', '--color', type = str, default = "#888",
-		help = "Color value in #rgba format")
+	p.add_argument('-p', '--parts', action="store_true")
+	p.add_argument('-i', '--instruments', action="store_true")
+	p.add_argument('-c', '--channels', action="store_true")
+	p.add_argument('-m', '--meta', action="store_true")
 	p.add_argument("--verbose", "-v", action="store_true",
 		help="Show more detailed debug information")
 	p.epilog = __doc__
@@ -44,23 +42,24 @@ def main():
 
 	for filename in options.Filename:
 		score = Score(filename)
-		h = options.color.lstrip('#')
-		if len(h) == 3:
-			r, g, b = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(3))
-			a = 255
-		elif len(h) == 4:
-			r, g, b, a = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(4))
-		elif len(h) == 6:
-			r, g, b = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-			a = 255
-		elif len(h) == 8:
-			r, g, b, a = tuple(int(h[i:i+2], 16) for i in (0, 2, 4, 6))
-		else:
-			p.error(f'"{options.Color}" is not a valid Color')
-		color_dict = { 'r':r, 'g':g, 'b':b, 'a':a }
-		for staff in score.staffs():
-			staff.color = color_dict
-		score.save()
+		if options.meta:
+			for tag in score.meta_tags():
+				print(f"{tag.name}\t{tag.value or ''}")
+		for part in score.parts():
+			if options.parts:
+				print(part.name)
+			if options.instruments or options.channels:
+				for inst in part.instruments():
+					if options.instruments:
+						print(f'  {inst.name}')
+					if options.channels:
+						for chan in inst.channels():
+							if options.instruments:
+								print(f'    {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
+							else:
+								print(f'  {inst.name:24s}  {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
 
+if __name__ == "__main__":
+	main()
 
-#  end mscore/scripts/ms_colorize.py
+#  end mscore/scripts/ms_info.py

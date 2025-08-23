@@ -255,6 +255,9 @@ class Score(SmartTree):
 
 class Part(SmartNode):
 
+	def instruments(self):
+		return Instrument.from_elements(self.findall('./Instrument'))
+
 	def instrument(self):
 		return Instrument.from_element(self.find('Instrument'))
 
