@@ -34,7 +34,7 @@ from sf2utils.sf2parse import Sf2File
 from console_quiet import ConsoleQuiet
 from node_soso import SmartNode, SmartTree
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 
 CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 				 'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']
