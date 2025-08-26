@@ -23,6 +23,7 @@ Home = "https://github.com/Zen-Master-SoSo/mscore"
 ms-info = "mscore.scripts.ms_info:main"
 ms-clear-synth = "mscore.scripts.ms_clear_synth:main"
 ms-colorize = "mscore.scripts.ms_colorize:main"
+ms-copy-instrument = "mscore.scripts.ms_copy_instrument:main"
 ms-port-partition = "mscore.scripts.ms_port_partition:main"
 
 [build-system]

@@ -29,7 +29,7 @@ prompted for each replacement, for each part.
 """
 import logging, sys
 import argparse
-from rich.pretty import pprint
+from os.path import realpath
 from mscore import Score, VoiceName
 from mscore.fuzzy import FuzzyCandidate, FuzzyName
 
@@ -92,6 +92,8 @@ def main():
 		help="Show more detailed debug information")
 	p.epilog = __doc__
 	options = p.parse_args()
+	if realpath(options.Source[0]) == realpath(options.Target[0]):
+		p.error('Source is the same file as Target')
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
