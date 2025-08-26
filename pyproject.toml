@@ -40,7 +40,7 @@ build-backend = "flit_core.buildapi"
 name = "mscore"
 
 [bumpver]
-current_version = "1.10.1"
+current_version = "1.11.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
