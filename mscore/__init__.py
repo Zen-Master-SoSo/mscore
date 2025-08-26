@@ -213,9 +213,7 @@ class Score(SmartTree):
 		return self._parts.values()
 
 	def instruments(self):
-		return [ inst \
-			for part in self.parts() \
-			for inst in part.instruments() ]
+		return [ part.instrument() for part in self.parts() ]
 
 	def channels(self):
 		return [ channel \
