@@ -29,7 +29,8 @@ except ImportError:
 from operator import attrgetter
 from mscore import VoiceName
 
-FuzzCandidate = namedtuple('FuzzCandidate', ['voice_name', 'index'])
+
+FuzzyVoiceCandidate = namedtuple('FuzzyVoiceCandidate', ['voice_name', 'index'])
 FuzzResult = namedtuple('FuzzResult', ['score', 'candidate'])
 
 # Strategies for handling voice or numbers:
@@ -50,6 +51,35 @@ NUMBERS = [
 	['3', 'iii', '3rd', 'third', 'three'],
 	['4', 'iv', '4th', 'fourth', 'four']
 ]
+
+
+class FuzzyVoice:
+
+	def __init__(self, voice):
+		assert isinstance(voice, VoiceName)
+		self.ref = voice
+
+	def score_candidates(self, candidates: list,
+		numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> list:
+		"""
+		Returns a list of FuzzResult (score, candidate).
+		"candidates" must be a list of type FuzzyVoiceCandidate.
+		"""
+		assert numbers_strategy in [IGNORE, MATCH, PREFER]
+		assert voice_strategy in [IGNORE, MATCH, PREFER]
+		return sorted([ FuzzResult(
+			score(ref, candidate.voice_name, numbers_strategy, voice_strategy),
+			candidate) for candidate in candidates ], key=attrgetter('score'), reverse = True)
+
+	def best_match(ref: VoiceName, candidates: list,
+		numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> FuzzResult:
+		"""
+		Returns best matching FuzzResult (score, candidate)
+		"candidates" must be a list of type FuzzyVoiceCandidate.
+		"""
+		return score_candidates(ref, candidates, numbers_strategy, voice_strategy)[0]
+
+
 
 def score(voice_name1: VoiceName, voice_name2: VoiceName,
 	numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> float:
@@ -86,27 +116,6 @@ def _word_score(word1: str, word2: str) -> float:
 		word2 + 'es' == word1:
 		return 0.75
 	return 0.0
-
-def score_candidates(ref: VoiceName, candidates: list,
-	numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> list:
-	"""
-	Returns a list of FuzzResult (score, candidate).
-	"candidates" must be a list of type FuzzCandidate.
-	"""
-	assert isinstance(ref, VoiceName)
-	assert numbers_strategy in [IGNORE, MATCH, PREFER]
-	assert voice_strategy in [IGNORE, MATCH, PREFER]
-	return sorted([ FuzzResult(
-		score(ref, candidate.voice_name, numbers_strategy, voice_strategy),
-		candidate) for candidate in candidates ], key=attrgetter('score'), reverse = True)
-
-def best_match(ref: VoiceName, candidates: list,
-	numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> FuzzResult:
-	"""
-	Returns best matching FuzzResult (score, candidate)
-	"candidates" must be a list of type FuzzCandidate.
-	"""
-	return score_candidates(ref, candidates, numbers_strategy, voice_strategy)[0]
 
 @cache
 def _name_parts(name: str) -> tuple:
