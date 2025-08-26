@@ -38,9 +38,9 @@ class Instruments(SmartTree):
 	def __init__(self):
 		super().__init__(instruments_file())
 		self._groups = { group.name:group for group in \
-			InstrumentGroup.from_elements(self.findall('./InstrumentGroup')) }
+			InstrumentGroup.from_elements(self.findall('./InstrumentGroup'), self) }
 		self._genres = { genre.id:genre for genre in \
-			Genre.from_elements(self.findall('./Genre')) }
+			Genre.from_elements(self.findall('./Genre'), self) }
 		for instrument in self.instruments():
 			for id in instrument.genres():
 				self._genres[id]._instruments.append(instrument)
@@ -97,7 +97,7 @@ class InstrumentGroup(SmartNode):
 		return self.element_text('name')
 
 	def instruments(self):
-		return Instrument.from_elements(self.findall('./Instrument'))
+		return Instrument.from_elements(self.findall('./Instrument'), self)
 
 
 

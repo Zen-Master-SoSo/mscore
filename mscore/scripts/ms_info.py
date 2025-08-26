@@ -30,6 +30,7 @@ def main():
 	p.add_argument('-p', '--parts', action="store_true")
 	p.add_argument('-i', '--instruments', action="store_true")
 	p.add_argument('-c', '--channels', action="store_true")
+	p.add_argument('-s', '--staffs', action="store_true")
 	p.add_argument('-m', '--meta', action="store_true")
 	p.add_argument("--verbose", "-v", action="store_true",
 		help="Show more detailed debug information")
@@ -48,16 +49,19 @@ def main():
 		for part in score.parts():
 			if options.parts:
 				print(part.name)
+			if options.staffs:
+				for staff in part.staffs():
+					print(f'  Staff {staff.id} "{staff.type}" {staff.clef} {len(staff.measures())} measures')
 			if options.instruments or options.channels:
-				for inst in part.instruments():
-					if options.instruments:
-						print(f'  {inst.name}')
-					if options.channels:
-						for chan in inst.channels():
-							if options.instruments:
-								print(f'    {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
-							else:
-								print(f'  {inst.name:24s}  {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
+				inst = part.instrument()
+				if options.instruments:
+					print(f'  {inst.name}')
+				if options.channels:
+					for chan in inst.channels():
+						if options.instruments:
+							print(f'    {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
+						else:
+							print(f'  {inst.name:24s}  {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
 
 if __name__ == "__main__":
 	main()

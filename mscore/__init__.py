@@ -179,7 +179,16 @@ class Score(SmartTree):
 				self.tree = et.parse(bob)
 		else:
 			raise ValueError('Unsupported file extension: "{self.ext}"')
-		self.element = self.tree.getroot()
+		self.element = self.tree.getroot() # Necessary member of SmartTree
+		self._score_node = self.element.find('./Score')
+		self._parts = { part.name:part \
+			for part in Part.from_elements(self.findall('./Part'), self) }
+
+	def find(self, path):
+		return self._score_node.find(path)
+
+	def findall(self, path):
+		return self._score_node.findall(path)
 
 	def save_as(self, filename):
 		ext = splitext(filename)[-1]
@@ -201,10 +210,12 @@ class Score(SmartTree):
 					zipfile.writestr(entry['info'], entry['data'])
 
 	def parts(self):
-		return Part.from_elements(self.findall('./Score/Part'))
+		return self._parts.values()
 
 	def instruments(self):
-		return Instrument.from_elements(self.findall('./Score/Part/Instrument'))
+		return [ inst \
+			for part in self.parts() \
+			for inst in part.instruments() ]
 
 	def channels(self):
 		return [ channel \
@@ -212,14 +223,12 @@ class Score(SmartTree):
 			for channel in instrument.channels() ]
 
 	def staffs(self):
-		for part in self.parts():
-			yield from part.staffs()
+		return [ staff \
+			for part in self.parts() \
+			for staff in part.staffs() ]
 
 	def part(self, name):
-		for part in self.parts():
-			if part.name == name:
-				return part
-		return None
+		return self._parts[name]
 
 	def part_names(self):
 		return [ part.name for part in self.parts() ]
@@ -234,17 +243,23 @@ class Score(SmartTree):
 	def instrument_names(self):
 		return [ p.instrument().name for p in self.parts() ]
 
+	def concatenate_measures(self, source_score):
+		for staff in self.findall('./Staff'):
+			id = staff.attrib['id']
+			source_measures = source_score.findall(f'./Staff[@id="{id}"]/Measure')
+			staff.extend(source_measures)
+
 	def meta_tags(self):
 		"""
 		Returns a list of MetaTag objects.
 		"""
-		return MetaTag.from_elements(self.findall('./Score/metaTag'))
+		return MetaTag.from_elements(self.findall('./metaTag'))
 
 	def meta_tag(self, name):
 		"""
 		Returns a list of MetaTag objects.
 		"""
-		node = self.find(f'./Score/metaTag[@name="{name}"]')
+		node = self.find(f'./metaTag[@name="{name}"]')
 		return None if node is None else MetaTag(node)
 
 	def sound_fonts(self):
@@ -256,11 +271,12 @@ class Score(SmartTree):
 
 class Part(SmartNode):
 
-	def instruments(self):
-		return Instrument.from_elements(self.findall('./Instrument'))
+	def __init__(self, element, parent):
+		super().__init__(element, parent)
+		self._instrument = Instrument.from_element(self.find('./Instrument'), self)
 
 	def instrument(self):
-		return Instrument.from_element(self.find('Instrument'))
+		return self._instrument
 
 	def replace_instrument(self, instrument):
 		if not isinstance(instrument, Instrument):
@@ -268,10 +284,16 @@ class Part(SmartNode):
 		new_instrument_node = deepcopy(instrument.element)
 		old_instrument_node = self.find('Instrument')
 		self.element.remove(old_instrument_node)
-		self.element.insert(len(self.element), new_instrument_node)
+		self.element.append(new_instrument_node)
 
 	def staffs(self):
-		return Staff.from_elements(self.findall('Staff'))
+		return Staff.from_elements(self.findall('Staff'), self)
+
+	def staff(self, id):
+		for staff in self.staffs():
+			if staff.id == id:
+				return staff
+		raise IndexError
 
 	@property
 	def name(self):
@@ -283,15 +305,25 @@ class Part(SmartNode):
 
 class Instrument(SmartNode):
 
+	def __init__(self, element, parent):
+		super().__init__(element, parent)
+		self._init_channels()
+
+	def _init_channels(self):
+		self._channels = { chan.name:chan \
+			for chan in Channel.from_elements(self.findall('Channel'), self) }
+
 	def channels(self):
 		"""
 		Returns list of Channel objects.
 		"""
-		channels = Channel.from_elements(self.findall('Channel'))
-		name = self.name
-		for channel in channels:
-			channel.instrument_name = name
-		return channels
+		return self._channels.values()
+
+	def channel(self, name):
+		"""
+		Returns list of Channel objects.
+		"""
+		return self._channels[name]
 
 	def channel_names(self):
 		"""
@@ -314,6 +346,7 @@ class Instrument(SmartNode):
 				unique_channel_names.remove(channel.name)
 			else:
 				self.element.remove(channel.element)
+		self._init_channels()
 
 	@property
 	def name(self):
@@ -348,6 +381,7 @@ class Instrument(SmartNode):
 		node = self.find(f'Channel[@name="{name}"]')
 		if node:
 			self.element.remove(node)
+		self._init_channels()
 
 	def add_channel(self, name):
 		"""
@@ -357,7 +391,8 @@ class Instrument(SmartNode):
 			raise RuntimeError(f'Channel "{name}" already exists')
 		new_channel_node = et.SubElement(self.element, 'Channel')
 		new_channel_node.set('name', name)
-		return Channel(new_channel_node)
+		self._init_channels()
+		return self.channel(name)
 
 	def __str__(self):
 		return f'<Instrument "{self.name}">'
@@ -404,6 +439,10 @@ class Channel(SmartNode):
 	@property
 	def name(self):
 		return self.attribute_value('name', 'normal')
+
+	@property
+	def instrument_name(self):
+		return self.parent.name
 
 	@property
 	def voice_name(self):
@@ -477,6 +516,10 @@ class Channel(SmartNode):
 
 class Staff(SmartNode):
 
+	def measures(self):
+		score = self.parent.parent
+		return Measure.from_elements(score.findall(f'./Staff[@id="{self.id}"]/Measure'))
+
 	@property
 	def color(self):
 		"""
@@ -507,8 +550,26 @@ class Staff(SmartNode):
 	def id(self):
 		return self.attribute_value('id')
 
+	@property
+	def type(self):
+		type_node = self.find('./StaffType')
+		try:
+			return f'{type_node.attrib["group"]} {self.element_text("./StaffType/name")}'
+		except Exception:
+			return ''
+
+	@property
+	def clef(self):
+		return self.element_text('./defaultClef', self.element_text('./defaultConcertClef', 'G'))
+
 	def __str__(self):
 		return f'<Staff "{self.id}">'
+
+
+class Measure(SmartNode):
+
+	def is_empty(self):
+		return len(self.find_all('.//Note')) == 0
 
 
 class MetaTag(SmartNode):
