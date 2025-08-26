@@ -56,19 +56,22 @@ def prompt_for_target(source, target, part_name, always_prompt):
 	results = FuzzyName(part_name).score_candidates(candidates)
 	if always_prompt or results[0].score < 1.0:
 		results = [ r.candidate.name for r in results if r.score > 0 ]
-		print(f'Confirm which part_name in "{target.basename}" you want to replace')
+		print(f'Confirm which part in "{target.basename}" you want to replace')
 		print(f'with the instrument from "{source.basename}" "{part_name}":')
+		print(f' "{part_name}" matches:')
 		for idx, result in enumerate(results):
 			print(f' {idx + 1}. {result}')
-		return _get_selection('Select the part to overwrite: [1] ', results)
+		return _get_selection('Select the target part (s to skip): [1] ', results)
 	else:
 		return results[0].candidate.name
 
 def _get_selection(prompt, results):
 	while True:
 		try:
-			selection = input(prompt)
-			index = int(selection.strip()) - 1 if selection.strip() else 0
+			selection = input(prompt).strip()
+			if selection == 's':
+				return None
+			index = int(selection) - 1 if selection else 0
 			print()
 			return results[index]
 		except KeyboardInterrupt:
@@ -108,8 +111,10 @@ def main():
 		else:
 			part_name = prompt_for_source(source, part_name)
 		tgt_part_name = prompt_for_target(source, target, part_name, options.part is None)
-		print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name}')
-		target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
+		if tgt_part_name:
+			print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name} ***')
+			target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
+	target.save()
 
 if __name__ == "__main__":
 	main()
