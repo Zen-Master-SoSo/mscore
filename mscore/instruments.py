@@ -24,6 +24,7 @@ import logging
 from node_soso import SmartNode, SmartTree
 from mscore import instruments_file, Instrument as _Instrument
 
+
 class Instruments(SmartTree):
 	"""
 	Root tree parsed from "instruments.xml"
@@ -36,22 +37,32 @@ class Instruments(SmartTree):
 
 	def __init__(self):
 		super().__init__(instruments_file())
-		self.instrument_groups = InstrumentGroup.from_elements(
-			self.findall('./InstrumentGroup'))
+		self._groups = { group.name:group for group in \
+			InstrumentGroup.from_elements(self.findall('./InstrumentGroup')) }
 		self._genres = { genre.id:genre for genre in \
 			Genre.from_elements(self.findall('./Genre')) }
 		for instrument in self.instruments():
 			for id in instrument.genres():
 				self._genres[id]._instruments.append(instrument)
 
+	def groups(self):
+		return self._groups.values()
+
+	def group(self, name):
+		if name in self._groups:
+			return self._groups[name]
+		raise IndexError
+
 	def genres(self):
 		return self._genres.values()
 
 	def genre(self, id):
-		return self._genres[id]
+		if id in self._genres:
+			return self._genres[id]
+		raise IndexError
 
 	def instruments(self):
-		for group in self.instrument_groups:
+		for group in self._groups.values():
 			yield from group.instruments()
 
 

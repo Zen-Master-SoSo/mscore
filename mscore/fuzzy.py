@@ -30,6 +30,7 @@ from operator import attrgetter
 from mscore import VoiceName
 
 
+FuzzyCandidate = namedtuple('FuzzyCandidate', ['name', 'index'])
 FuzzyVoiceCandidate = namedtuple('FuzzyVoiceCandidate', ['voice_name', 'index'])
 FuzzResult = namedtuple('FuzzResult', ['score', 'candidate'])
 
@@ -53,14 +54,68 @@ NUMBERS = [
 ]
 
 
+class FuzzyName:
+
+	def __init__(self, name):
+		"""
+		Initialize.
+		(str) "name" will be compared with candidates inside other methods.
+		"""
+		assert isinstance(name, str)
+		self.ref = name
+
+	def score_candidates(self, candidates, numbers_strategy = PREFER):
+		"""
+		Returns a list of FuzzResult (score, candidate).
+		"candidates" must be a list of type str.
+		"""
+		assert isinstance(candidates, list)
+		if len(candidates):
+			assert isinstance(candidates[0], FuzzyCandidate)
+		assert numbers_strategy in [IGNORE, MATCH, PREFER]
+		return sorted([ FuzzResult(self.score(candidate.name, numbers_strategy), candidate) \
+			for candidate in candidates ], key = attrgetter('score'), reverse = True)
+
+	def best_match(self, candidates, numbers_strategy = PREFER):
+		"""
+		Returns best matching FuzzResult (score, candidate)
+		"candidates" must be a list of type str.
+		"""
+		return self.score_candidates(candidates, numbers_strategy)[0]
+
+	def score(self, name, numbers_strategy = PREFER):
+		"""
+		Returns a score based on how well the given instrument names match.
+		"""
+		assert isinstance(name, str)
+		assert numbers_strategy in [IGNORE, MATCH, PREFER]
+		if self.ref == name:
+			return 1.0
+		num1, words1 = _name_parts(self.ref)
+		num2, words2 = _name_parts(name)
+		if numbers_strategy == MATCH and num1 != num2:
+			return 0.0
+		long_list, short_list = (words1, words2) if len(words1) > len(words2) else (words2, words1)
+		scores = [
+			sorted([ _word_score(word1, word2) for word2 in short_list ]).pop() \
+			for word1 in long_list ]
+		f_score = sum(scores) / len(scores)
+		if numbers_strategy == PREFER and num1 != num2:
+			return f_score * 0.75
+		return f_score
+
+
 class FuzzyVoice:
 
 	def __init__(self, voice):
+		"""
+		Initialize.
+		(VoiceName) "name" will be compared with candidates inside other methods.
+		"""
 		assert isinstance(voice, VoiceName)
 		self.ref = voice
 
-	def score_candidates(self, candidates: list,
-		numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> list:
+	def score_candidates(self, candidates, numbers_strategy = PREFER, voice_strategy = PREFER):
 		"""
 		Returns a list of FuzzResult (score, candidate).
 		"candidates" must be a list of type FuzzyVoiceCandidate.
@@ -68,44 +123,42 @@ class FuzzyVoice:
 		assert numbers_strategy in [IGNORE, MATCH, PREFER]
 		assert voice_strategy in [IGNORE, MATCH, PREFER]
 		return sorted([ FuzzResult(
-			score(ref, candidate.voice_name, numbers_strategy, voice_strategy),
-			candidate) for candidate in candidates ], key=attrgetter('score'), reverse = True)
+			self.score(candidate.voice_name, numbers_strategy, voice_strategy),
+			candidate
+		) for candidate in candidates ], key = attrgetter('score'), reverse = True)
 
-	def best_match(ref: VoiceName, candidates: list,
-		numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> FuzzResult:
+	def best_match(self, candidates, numbers_strategy = PREFER, voice_strategy = PREFER):
 		"""
 		Returns best matching FuzzResult (score, candidate)
 		"candidates" must be a list of type FuzzyVoiceCandidate.
 		"""
-		return score_candidates(ref, candidates, numbers_strategy, voice_strategy)[0]
+		return self.score_candidates(candidates, numbers_strategy, voice_strategy)[0]
 
+	def score(self, voice, numbers_strategy = PREFER, voice_strategy = PREFER):
+		"""
+		Returns a score based on how well the given instrument names match.
+		"""
+		assert numbers_strategy in [IGNORE, MATCH, PREFER]
+		assert voice_strategy in [IGNORE, MATCH, PREFER]
+		if self.ref == voice:
+			return 1.0
+		if voice_strategy == MATCH and self.ref.voice != voice.voice:
+			return 0.0
+		num1, words1 = _name_parts(self.ref.instrument_name)
+		num2, words2 = _name_parts(voice.instrument_name)
+		if numbers_strategy == MATCH and num1 != num2:
+			return 0.0
+		long_list, short_list = (words1, words2) if len(words1) > len(words2) else (words2, words1)
+		scores = [
+			sorted([ _word_score(word1, word2) for word2 in short_list ]).pop() \
+			for word1 in long_list ]
+		f_score = sum(scores) / len(scores)
+		if voice_strategy == PREFER and self.ref.voice != voice.voice:
+			return f_score * 0.5
+		if numbers_strategy == PREFER and num1 != num2:
+			return f_score * 0.75
+		return f_score
 
-
-def score(voice_name1: VoiceName, voice_name2: VoiceName,
-	numbers_strategy: int = MATCH, voice_strategy: int = MATCH) -> float:
-	"""
-	Returns a score based on how well the given instrument names match.
-	"""
-	assert numbers_strategy in [IGNORE, MATCH, PREFER]
-	assert voice_strategy in [IGNORE, MATCH, PREFER]
-	if voice_name1 == voice_name2:
-		return 1.0
-	if voice_strategy == MATCH and voice_name1.voice != voice_name2.voice:
-		return 0.0
-	num1, words1 = _name_parts(voice_name1.instrument_name)
-	num2, words2 = _name_parts(voice_name2.instrument_name)
-	if numbers_strategy == MATCH and num1 != num2:
-		return 0.0
-	long_list, short_list = (words1, words2) if len(words1) > len(words2) else (words2, words1)
-	scores = [
-		sorted([ _word_score(word1, word2) for word2 in short_list ]).pop() \
-		for word1 in long_list ]
-	f_score = sum(scores) / len(scores)
-	if voice_strategy == PREFER and voice_name1.voice != voice_name2.voice:
-		return f_score * 0.5
-	if numbers_strategy == PREFER and num1 != num2:
-		return f_score * 0.8
-	return f_score
 
 def _word_score(word1: str, word2: str) -> float:
 	if word1 == word2:

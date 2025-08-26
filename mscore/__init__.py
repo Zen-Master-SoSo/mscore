@@ -78,7 +78,7 @@ def ini_file():
 	The ConfigParser may be used to modify the .ini file, but that is outside of
 	the (current) scope of this project. USE AT YOUR OWN RISK!
 	"""
-	filename = join(user_config_dir('MuseScore3'), 'MuseScore3.ini')
+	filename = join(user_config_dir('MuseScore'), 'MuseScore3.ini')
 	config = configparser.ConfigParser()
 	config.read(filename)
 	return config
@@ -87,7 +87,7 @@ def instruments_file():
 	"""
 	Returns (str) path to "instruments.xml"
 	"""
-	return join(user_config_dir('MuseScore3'), 'instruments.xml')
+	return ini_file().get('application', 'paths\instrumentlist1')
 
 @cache
 def default_sound_fonts():
@@ -157,6 +157,7 @@ class Score(SmartTree):
 
 	def __init__(self, filename):
 		self.filename = filename
+		self.basename = basename(filename)
 		self.ext = splitext(filename)[-1]
 		if self.ext == '.mscx':
 			self.tree = et.parse(filename)
@@ -261,7 +262,7 @@ class Part(SmartNode):
 	def instrument(self):
 		return Instrument.from_element(self.find('Instrument'))
 
-	def use_instrument(self, instrument):
+	def replace_instrument(self, instrument):
 		if not isinstance(instrument, Instrument):
 			raise ValueError('Can only copy Instrument')
 		new_instrument_node = deepcopy(instrument.element)

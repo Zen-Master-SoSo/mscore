@@ -27,11 +27,11 @@ to confirm the selection if there is no part name which matches exactly.
 When not specifying a part to copy, the same scenario applies, but you will be
 prompted for each replacement, for each part.
 """
-import logging
+import logging, sys
 import argparse
 from rich.pretty import pprint
 from mscore import Score, VoiceName
-from mscore.fuzzy import FuzzyVoiceCandidate, score_candidates
+from mscore.fuzzy import FuzzyCandidate, FuzzyName
 
 options = None
 
@@ -39,13 +39,43 @@ def prompt_replacement(source_part, tgt_part):
 	ans = input(f' Copy "{source_part}" from "{options.Source}" to "{tgt_part}" in "{options.Target}"? [y/N]')
 	return ans[0].lower() == 'y'
 
-def prompt_match(score, part):
-	candidates = [ FuzzyVoiceCandidate(VoiceName(p.name, None), i) \
-		for i, p in enumerate(score.parts()) ]
-	results = score_candidates(VoiceName(part.name, None), candidates)
-	pprint([
-		(r.candidate.voice_name.instrument_name, r.score) \
-		for r in results])
+def prompt_for_source(source, part_name):
+	candidates = [ FuzzyCandidate(p.name, i) \
+		for i, p in enumerate(source.parts()) ]
+	results = FuzzyName(part_name).score_candidates(candidates)
+	results = [ r.candidate.name for r in results if r.score > 0 ]
+	print(f'Did not find "{part_name}" in "{source.basename}"')
+	print('Did you mean one of the following?')
+	for idx, result in enumerate(results):
+		print(f' {idx + 1}. {result}')
+	return _get_selection('Select the part to copy over: [1] ', results)
+
+def prompt_for_target(source, target, part_name, always_prompt):
+	candidates = [ FuzzyCandidate(p.name, i) \
+		for i, p in enumerate(target.parts()) ]
+	results = FuzzyName(part_name).score_candidates(candidates)
+	if always_prompt or results[0].score < 1.0:
+		results = [ r.candidate.name for r in results if r.score > 0 ]
+		print(f'Confirm which part_name in "{target.basename}" you want to replace')
+		print(f'with the instrument from "{source.basename}" "{part_name}":')
+		for idx, result in enumerate(results):
+			print(f' {idx + 1}. {result}')
+		return _get_selection('Select the part to overwrite: [1] ', results)
+	else:
+		return results[0].candidate.name
+
+def _get_selection(prompt, results):
+	while True:
+		try:
+			selection = input(prompt)
+			index = int(selection.strip()) - 1 if selection.strip() else 0
+			print()
+			return results[index]
+		except KeyboardInterrupt:
+			print()
+			sys.exit(1)
+		except IndexError:
+			print(f'"{selection} is an invalid choice. Try again')
 
 def main():
 	p = argparse.ArgumentParser()
@@ -53,7 +83,7 @@ def main():
 		help = 'MuseScore3 score file to copy from')
 	p.add_argument('Target', type = str, nargs = 1,
 		help = 'MuseScore3 score file to copy to')
-	p.add_argument('--part', '-p', type = str, nargs = '?',
+	p.add_argument('--part', '-p', type = str, nargs = '*',
 		help = 'Part to copy')
 	p.add_argument("--verbose", "-v", action = "store_true",
 		help="Show more detailed debug information")
@@ -65,12 +95,24 @@ def main():
 	)
 
 	source = Score(options.Source[0])
-	target = Score(options.Source[0])
+	target = Score(options.Target[0])
+	src_parts = source.part_names()
+	src_parts_lower = [ part_name.lower() for part_name in src_parts ]
 
-	for part in source.parts():
-		prompt_match(target, part)
+	parts_to_replace = options.part or src_parts
+	for part_name in parts_to_replace:
+		print()
+		part_name = part_name.lower()
+		if part_name in src_parts_lower:
+			part_name = src_parts[ src_parts_lower.index(part_name) ]
+		else:
+			part_name = prompt_for_source(source, part_name)
+		tgt_part_name = prompt_for_target(source, target, part_name, options.part is None)
+		print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name}')
+		target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
 
 if __name__ == "__main__":
 	main()
+
 
 #  end mscore/scripts/ms_colorize.py
