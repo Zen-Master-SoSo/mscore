@@ -84,7 +84,7 @@ def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Source', type = str, nargs = 1,
 		help = 'MuseScore3 score file to copy from')
-	p.add_argument('Target', type = str, nargs = 1,
+	p.add_argument('Target', type = str, nargs = '+',
 		help = 'MuseScore3 score file to copy to')
 	p.add_argument('--part', '-p', type = str, nargs = '*',
 		help = 'Part to copy')
@@ -100,23 +100,24 @@ def main():
 	)
 
 	source = Score(options.Source[0])
-	target = Score(options.Target[0])
 	src_parts = source.part_names()
 	src_parts_lower = [ part_name.lower() for part_name in src_parts ]
-
 	parts_to_replace = options.part or src_parts
-	for part_name in parts_to_replace:
-		print()
-		part_name = part_name.lower()
-		if part_name in src_parts_lower:
-			part_name = src_parts[ src_parts_lower.index(part_name) ]
-		else:
-			part_name = prompt_for_source(source, part_name)
-		tgt_part_name = prompt_for_target(source, target, part_name, options.part is None)
-		if tgt_part_name:
-			print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name} ***')
-			target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
-	target.save()
+
+	for target_path in options.Target:
+		target = Score(target_path)
+		for part_name in parts_to_replace:
+			print()
+			part_name = part_name.lower()
+			if part_name in src_parts_lower:
+				part_name = src_parts[ src_parts_lower.index(part_name) ]
+			else:
+				part_name = prompt_for_source(source, part_name)
+			tgt_part_name = prompt_for_target(source, target, part_name, options.part is None)
+			if tgt_part_name:
+				print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name} ***')
+				target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
+		target.save()
 
 if __name__ == "__main__":
 	main()

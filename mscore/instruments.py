@@ -71,8 +71,8 @@ class Genre(SmartNode):
 	Object parsed from top-level "Genre" node
 	"""
 
-	def __init__(self, element):
-		self.element = element
+	def __init__(self, element, parent):
+		super().__init__(element, parent)
 		self._instruments = []
 
 	@property

@@ -21,7 +21,7 @@
 A python library for opening/inspecting/modifying MuseScore3 files.
 """
 import os, sys, logging, configparser, glob, io
-from os.path import join, basename, splitext
+from os.path import join, basename, splitext, exists
 from appdirs import user_config_dir, user_data_dir
 import xml.etree.ElementTree as et
 try:
@@ -87,7 +87,10 @@ def instruments_file():
 	"""
 	Returns (str) path to "instruments.xml"
 	"""
-	return ini_file().get('application', 'paths\instrumentlist1')
+	for key in ['paths\instrumentlist1', 'paths\instrumentlist2']:
+		filename = ini_file().get('application', key)
+		if exists(filename):
+			return filename
 
 @cache
 def default_sound_fonts():
