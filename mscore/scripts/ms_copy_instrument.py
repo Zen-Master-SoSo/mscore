@@ -20,12 +20,9 @@
 """
 Allows you to copy an instrument definition from one score to another.
 
-If "--part" is given, this script will attempt to match the part name in both
-Source and Target, and copy the best matching part. You will be prompted
-to confirm the selection if there is no part name which matches exactly.
-
-When not specifying a part to copy, the same scenario applies, but you will be
-prompted for each replacement, for each part.
+This script will attempt to match the part name in both Source and Target, and
+copy the best matching part. You will be prompted to confirm the selection if
+there is no part name which matches exactly.
 """
 import logging, sys
 import argparse
@@ -50,11 +47,11 @@ def prompt_for_source(source, part_name):
 		print(f' {idx + 1}. {result}')
 	return _get_selection('Select the part to copy over: [1] ', results)
 
-def prompt_for_target(source, target, part_name, always_prompt):
+def prompt_for_target(source, target, part_name):
 	candidates = [ FuzzyCandidate(p.name, i) \
 		for i, p in enumerate(target.parts()) ]
 	results = FuzzyName(part_name).score_candidates(candidates)
-	if always_prompt or results[0].score < 1.0:
+	if results[0].score < 1.0:
 		results = [ r.candidate.name for r in results if r.score > 0 ]
 		print(f'Confirm which part in "{target.basename}" you want to replace')
 		print(f'with the instrument from "{source.basename}" "{part_name}":')
@@ -84,7 +81,7 @@ def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Source', type = str, nargs = 1,
 		help = 'MuseScore3 score file to copy from')
-	p.add_argument('Target', type = str, nargs = 1,
+	p.add_argument('Targets', type = str, nargs = '+',
 		help = 'MuseScore3 score file to copy to')
 	p.add_argument('--part', '-p', type = str, nargs = '*',
 		help = 'Part to copy')
@@ -92,31 +89,33 @@ def main():
 		help="Show more detailed debug information")
 	p.epilog = __doc__
 	options = p.parse_args()
-	if realpath(options.Source[0]) == realpath(options.Target[0]):
-		p.error('Source is the same file as Target')
+	for tgt_filename in options.Targets:
+		if realpath(options.Source[0]) == realpath(tgt_filename):
+			p.error('Source is the same file as Target')
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 
 	source = Score(options.Source[0])
-	target = Score(options.Target[0])
 	src_parts = source.part_names()
 	src_parts_lower = [ part_name.lower() for part_name in src_parts ]
 
 	parts_to_replace = options.part or src_parts
-	for part_name in parts_to_replace:
+	for tgt_filename in options.Targets:
+		target = Score(tgt_filename)
+		for part_name in parts_to_replace:
+			part_name = part_name.lower()
+			if part_name in src_parts_lower:
+				part_name = src_parts[ src_parts_lower.index(part_name) ]
+			else:
+				part_name = prompt_for_source(source, part_name)
+			tgt_part_name = prompt_for_target(source, target, part_name)
+			if tgt_part_name:
+				print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name} ***')
+				target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
+		target.save()
 		print()
-		part_name = part_name.lower()
-		if part_name in src_parts_lower:
-			part_name = src_parts[ src_parts_lower.index(part_name) ]
-		else:
-			part_name = prompt_for_source(source, part_name)
-		tgt_part_name = prompt_for_target(source, target, part_name, options.part is None)
-		if tgt_part_name:
-			print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name} ***')
-			target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
-	target.save()
 
 if __name__ == "__main__":
 	main()

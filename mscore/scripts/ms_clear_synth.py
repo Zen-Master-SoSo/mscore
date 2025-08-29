@@ -26,7 +26,7 @@ from mscore import Score
 
 def main():
 	p = argparse.ArgumentParser()
-	p.add_argument('Filename', type = str,
+	p.add_argument('Filename', type = str, nargs = '+',
 		help = "MuseScore3 file (.mscz or .mscx)")
 	p.add_argument("--verbose", "-v", action="store_true",
 		help="Show more detailed debug information")
@@ -37,10 +37,11 @@ def main():
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 
-	score = Score(options.Filename)
-	for instrument in score.instruments():
-		instrument.clear_synth()
-	score.save()
+	for filename in options.Filename:
+		score = Score(filename)
+		for instrument in score.instruments():
+			instrument.clear_synth()
+		score.save()
 
 if __name__ == "__main__":
 	main()
