@@ -312,7 +312,7 @@ class Instrument(SmartNode):
 
 	def _init_channels(self):
 		self._channels = { chan.name:chan \
-			for chan in Channel.from_elements(self.findall('Channel'), self) }
+			for chan in Channel.from_elements(self.findall('./Channel'), self) }
 
 	def channels(self):
 		"""
@@ -512,7 +512,7 @@ class Channel(SmartNode):
 		self.set_controller_value(self.CC_PAN, str(value))
 
 	def __str__(self):
-		return f'<Channel "{self.name}">'
+		return f'<Channel "{self.voice_name}">'
 
 
 class Staff(SmartNode):
