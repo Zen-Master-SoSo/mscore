@@ -31,6 +31,7 @@ ms-colorize = "mscore.scripts.ms_colorize:main"
 ms-concatenate = "mscore.scripts.ms_concatenate:main"
 ms-copy-instrument = "mscore.scripts.ms_copy_instrument:main"
 ms-port-partition = "mscore.scripts.ms_port_partition:main"
+ms-create-template = "mscore.scripts.ms_create_template:main"
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]

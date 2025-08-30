@@ -549,6 +549,24 @@ class Staff(SmartNode):
 	def is_empty(self):
 		return all(measure.is_empty() for measure in self.measures())
 
+	def empty(self):
+		"""
+		Removes all but the first measure, and removes all chords and rests within it.
+		"""
+		score = self.parent.parent
+		staff_node = score.find(f'./Staff[@id="{self.id}"]')
+		measure_nodes = staff_node.findall(f'./Measure')
+		for node in measure_nodes[1:]:
+			staff_node.remove(node)
+		for node in measure_nodes[0].getchildren():
+			measure_nodes[0].remove(node)
+		voice_node = et.SubElement(measure_nodes[0], 'voice')
+		rest_node = et.SubElement(voice_node, 'Rest')
+		node = et.SubElement(rest_node, 'durationType')
+		node.text = 'measure'
+		node = et.SubElement(rest_node, 'duration')
+		node.text = '4/4'
+
 	def channel_switches_used(self):
 		"""
 		Returns a set of (str) StaffText/channelSwitch values
