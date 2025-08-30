@@ -28,6 +28,8 @@ try:
 	from functools import cache
 except ImportError:
 	from functools import lru_cache as cache
+from functools import reduce
+from operator import or_
 from zipfile import ZipFile
 from copy import deepcopy
 from sf2utils.sf2parse import Sf2File
@@ -310,6 +312,13 @@ class Part(SmartNode):
 				return staff
 		raise IndexError
 
+	def channel_switches_used(self):
+		"""
+		Returns a set of (str) StaffText/channelSwitch values
+		"""
+		sets = [ staff.channel_switches_used() for staff in self.staffs() ]
+		return reduce(or_, sets, set())
+
 	@property
 	def name(self):
 		return self.element_text('trackName')
@@ -537,6 +546,19 @@ class Staff(SmartNode):
 		score = self.parent.parent
 		return Measure.from_elements(score.findall(f'./Staff[@id="{self.id}"]/Measure'))
 
+	def is_empty(self):
+		return all(measure.is_empty() for measure in self.measures())
+
+	def channel_switches_used(self):
+		"""
+		Returns a set of (str) StaffText/channelSwitch values
+		"""
+		sets = [ measure.channel_switches() for measure in self.measures() ]
+		return reduce(or_, sets, set())
+
+	def part(self):
+		return self.parent
+
 	@property
 	def color(self):
 		"""
@@ -588,6 +610,12 @@ class Measure(SmartNode):
 	def is_empty(self):
 		return len(self.find_all('.//Note')) == 0
 
+	def channel_switches(self):
+		"""
+		Returns a set of (str) StaffText/channelSwitch values
+		"""
+		nodes = self.findall('./voice/StaffText/channelSwitch')
+		return set() if nodes is None else { node.attrib['name'] for node in nodes }
 
 class MetaTag(SmartNode):
 

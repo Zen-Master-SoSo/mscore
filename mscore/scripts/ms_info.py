@@ -30,9 +30,12 @@ def main():
 	p.add_argument('-p', '--parts', action="store_true")
 	p.add_argument('-i', '--instruments', action="store_true")
 	p.add_argument('-c', '--channels', action="store_true")
-	p.add_argument('-C', '--controllers', action="store_true")
 	p.add_argument('-s', '--staffs', action="store_true")
 	p.add_argument('-m', '--meta', action="store_true")
+	p.add_argument('--controllers', action="store_true",
+		help = 'Show constant controller (CC) values, such as volume and pan settings')
+	p.add_argument('--channel-switches', action="store_true",
+		help = 'Show channel switches used. These are staff text which set the channel to be used.')
 	p.add_argument("--verbose", "-v", action="store_true",
 		help="Show more detailed debug information")
 	p.epilog = __doc__
@@ -44,27 +47,29 @@ def main():
 
 	for filename in options.Filename:
 		score = Score(filename)
+		chanlen = max(len(chan.name) for chan in score.channels())
+		chanfmt = '    {0:%ds} | port {1:02d} | channel {2:02d}' % chanlen
 		if options.meta:
 			for tag in score.meta_tags():
 				print(f"{tag.name}\t{tag.value or ''}")
 		for part in score.parts():
-			if options.parts:
+			if options.parts or options.channel_switches:
 				print(part.name)
+			if options.channel_switches:
+				switches = part.channel_switches_used()
+				print('  Channel switches used: ' + (', '.join(switches) if switches else 'None'))
 			if options.staffs:
 				for staff in part.staffs():
-					print(f'  Staff {staff.id} "{staff.type}" {staff.clef} {len(staff.measures())} measures')
+					print(f'  Staff {staff.id} | {staff.type} | {staff.clef} clef | {len(staff.measures())} measures')
 			if options.instruments or options.channels or options.controllers:
 				inst = part.instrument()
-				if options.instruments:
-					print(f'  {inst.name}')
-				for chan in inst.channels():
-					if options.instruments:
-						print(f'    {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
-					else:
-						print(f'  {inst.name:24s}  {chan.name:24s}  {chan.midi_port:2d} {chan.midi_channel:2d}')
-					if options.controllers:
-						print('    ' + ', '.join(f'{name}: {chan.controller_value(cc)}'
-							for cc, name in CC_NAMES.items() ))
+				print(f'  {inst.name}')
+				if options.channels or options.controllers:
+					for chan in inst.channels():
+						print(chanfmt.format(chan.name, chan.midi_port, chan.midi_channel))
+						if options.controllers:
+							print('      ' + ', '.join(f'{name}: {chan.controller_value(cc)}'
+								for cc, name in CC_NAMES.items() ))
 
 if __name__ == "__main__":
 	main()
