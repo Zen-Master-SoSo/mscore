@@ -38,6 +38,20 @@ __version__ = "1.12.0"
 
 CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 				 'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']
+
+CC_VOLUME		= 7
+CC_BALANCE		= 8
+CC_PAN			= 10
+CC_BANK_MSB		= 0
+CC_BANK_LSB		= 32
+
+CC_NAMES = {
+	CC_VOLUME	: 'CC_VOLUME',
+	CC_BALANCE	: 'CC_BALANCE',
+	CC_PAN		: 'CC_PAN',
+	CC_BANK_MSB	: 'CC_BANK_MSB',
+	CC_BANK_LSB	: 'CC_BANK_LSB'
+}
 DEFAULT_VOICE	= 'normal'
 
 
@@ -401,21 +415,15 @@ class Instrument(SmartNode):
 
 class Channel(SmartNode):
 
-	CC_VOLUME		= 7
-	CC_BALANCE		= 8
-	CC_PAN			= 10
-	CC_BANK_MSB		= 0
-	CC_BANK_LSB		= 32
-
 	def program(self):
 		el = self.find('program')
 		return None if el is None else int(el.attrib['value'])
 
 	def bank_msb(self):
-		return self.controller_value(self.CC_BANK_MSB, int)
+		return self.controller_value(CC_BANK_MSB, int)
 
 	def bank_lsb(self):
-		return self.controller_value(self.CC_BANK_LSB, int)
+		return self.controller_value(CC_BANK_LSB, int)
 
 	def controller_value(self, ccid, type_ = None):
 		el = self.find(f'controller[@ctrl="{ccid}"]')
@@ -424,6 +432,8 @@ class Channel(SmartNode):
 			else type_(el.attrib['value'])
 
 	def set_controller_value(self, ccid, value):
+		if not 0 <= int(value) <= 127:
+			raise ValueError('Invalid CC value')
 		el = self.find(f'controller[@ctrl="{ccid}"]')
 		if el is None:
 			el = et.SubElement(self.element, 'controller')
@@ -463,10 +473,13 @@ class Channel(SmartNode):
 		"value" must be the public (1-based) channel number.
 		The actual node value is set to one less.
 		"""
+		value = int(value)
+		if value < 1:
+			raise ValueError('Channel midi_port must be greater than 0')
 		node = self.find('midiPort')
 		if node is None:
 			node = et.SubElement(self.element, 'midiPort')
-		node.text = str(int(value) - 1)
+		node.text = str(value - 1)
 
 	@property
 	def midi_channel(self):
@@ -482,34 +495,37 @@ class Channel(SmartNode):
 		"value" must be the public (1-based) channel number.
 		The actual node value is set to one less.
 		"""
+		value = int(value)
+		if not 1 <= value <= 16:
+			raise ValueError('Channel midi_channel must be betwen 1 and 16, inclusive')
 		node = self.find('midiChannel')
 		if node is None:
 			node = et.SubElement(self.element, 'midiChannel')
-		node.text = str(int(value) - 1)
+		node.text = str(value - 1)
 
 	@property
 	def volume(self):
-		return self.controller_value(self.CC_VOLUME, int)
+		return self.controller_value(CC_VOLUME, int)
 
 	@volume.setter
 	def volume(self, value):
-		self.set_controller_value(self.CC_VOLUME, str(value))
+		self.set_controller_value(CC_VOLUME, str(value))
 
 	@property
 	def balance(self):
-		return self.controller_value(self.CC_BALANCE, int)
+		return self.controller_value(CC_BALANCE, int)
 
 	@balance.setter
 	def balance(self, value):
-		self.set_controller_value(self.CC_BALANCE, str(value))
+		self.set_controller_value(CC_BALANCE, str(value))
 
 	@property
 	def pan(self):
-		return self.controller_value(self.CC_PAN, int)
+		return self.controller_value(CC_PAN, int)
 
 	@pan.setter
 	def pan(self, value):
-		self.set_controller_value(self.CC_PAN, str(value))
+		self.set_controller_value(CC_PAN, str(value))
 
 	def __str__(self):
 		return f'<Channel "{self.voice_name}">'
