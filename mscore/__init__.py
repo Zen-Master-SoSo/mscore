@@ -244,6 +244,10 @@ class Score(SmartTree):
 			for part in self.parts() \
 			for staff in part.staffs() ]
 
+	@property
+	def length(self):
+		return list(self._parts.values())[0].staffs()[0].length
+
 	def part(self, name):
 		return self._parts[name]
 
@@ -548,6 +552,10 @@ class Staff(SmartNode):
 
 	def is_empty(self):
 		return all(measure.is_empty() for measure in self.measures())
+
+	@property
+	def length(self):
+		return len(self.measures())
 
 	def empty(self):
 		"""

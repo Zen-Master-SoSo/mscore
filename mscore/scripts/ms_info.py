@@ -31,6 +31,7 @@ def main():
 	p.add_argument('-i', '--instruments', action="store_true")
 	p.add_argument('-c', '--channels', action="store_true")
 	p.add_argument('-s', '--staffs', action="store_true")
+	p.add_argument('-l', '--length', action="store_true")
 	p.add_argument('-m', '--meta', action="store_true")
 	p.add_argument('--controllers', action="store_true",
 		help = 'Show constant controller (CC) values, such as volume and pan settings')
@@ -47,6 +48,8 @@ def main():
 
 	for filename in options.Filename:
 		score = Score(filename)
+		if options.length:
+			print(f'{filename}: {score.length} measures')
 		chanlen = max(len(chan.name) for chan in score.channels())
 		chanfmt = '    {0:%ds} | port {1:02d} | channel {2:02d}' % chanlen
 		if options.meta:
