@@ -307,6 +307,17 @@ class Part(SmartNode):
 		self.element.remove(old_instrument_node)
 		self.element.append(new_instrument_node)
 
+	def copy_clef(self, source_part):
+		"""
+		Copy the staff definition from the given source_part to this Part.
+		"""
+		for source_staff, target_staff in zip(source_part.staffs(), self.staffs()):
+			for node_name in ['defaultClef', 'defaultConcertClef', 'defaultTransposingClef']:
+				source_node = source_staff.child(node_name, False)
+				if not source_node is None:
+					target_node = target_staff.child(node_name, True)
+					target_node.text = source_node.text
+
 	def staffs(self):
 		return Staff.from_elements(self.findall('Staff'), self)
 
@@ -590,7 +601,7 @@ class Staff(SmartNode):
 		"""
 		Returns a dictionary of RBG values.
 		"""
-		node = self.find('color')
+		node = self.child('color', False)
 		return None if node is None else {
 			'r'	: node.attrib['r'],
 			'g'	: node.attrib['g'],

@@ -85,6 +85,8 @@ def main():
 		help = 'MuseScore3 score file to copy to')
 	p.add_argument('--part', '-p', type = str, nargs = '*',
 		help = 'Part to copy')
+	p.add_argument("--clef", "-c", action = "store_true",
+		help="Copy default clef definition as well")
 	p.add_argument("--verbose", "-v", action = "store_true",
 		help="Show more detailed debug information")
 	p.epilog = __doc__
@@ -111,8 +113,11 @@ def main():
 				part_name = prompt_for_source(source, part_name)
 			tgt_part_name = prompt_for_target(source, target, part_name)
 			if tgt_part_name:
-				print(f'*** Copy {part_name} from {source.basename} to {target.basename} {tgt_part_name} ***')
+				print(f'  *** Copy {source.basename} {part_name} to {target.basename} {tgt_part_name} ***')
 				target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
+				if options.clef:
+					print('      copy clef')
+					target.part(tgt_part_name).copy_clef(source.part(part_name))
 		target.save()
 		print()
 
