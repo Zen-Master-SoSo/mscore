@@ -49,9 +49,10 @@ def main():
 	options = p.parse_args()
 	if len(options.Sources) < 2:
 		p.error('You must provide at least two sources.')
-
 	target_path = realpath(options.Target[0])
 	source_paths = [ realpath(src) for src in options.Sources ]
+	if target_path in source_paths:
+		p.error('Sourcees and Target must be different paths')
 
 	print('Concatenating:')
 	print(linesep.join(source_paths))
@@ -68,7 +69,7 @@ def main():
 	copy(options.Sources[0], target_path)
 	target = Score(target_path)
 
-	sources = [ Score(source_path) for source_path in source_paths ]
+	sources = [ Score(source_path) for source_path in source_paths[1:] ]
 	for src in sources:
 		if sorted(src.part_names()) != sorted(target.part_names()):
 			p.error(f'Source "{src.basename}" does not have the same part names as Source "{target.basename}"' +
