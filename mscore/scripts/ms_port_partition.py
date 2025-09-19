@@ -19,6 +19,10 @@
 #
 """
 Re-assigns MIDI port/channels grouped by instrument.
+
+Every instrument's "voice" is assigned a sequential MIDI channel. If an
+instrument has more "voices" (arco, staccato, tremolo, etc.)than there
+remaining channels on a port, they are assigned to the next available port.
 """
 import logging
 import argparse

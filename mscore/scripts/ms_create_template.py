@@ -18,7 +18,9 @@
 #  MA 02110-1301, USA.
 #
 """
-Creates an empty score from the given score. The created score is always saved in ".mscx" format.
+Creates an empty score to use as a template from the given score. The created
+template is always saved in ".mscx" format. You can open it in MuseScore, and
+save it with an .mscz format from there.
 """
 import logging, sys, argparse
 from mscore import Score

@@ -18,7 +18,7 @@
 #  MA 02110-1301, USA.
 #
 """
-Concatenates the measured from two or more scores into another score.
+Concatenates the measures from two or more scores into another score.
 
 The purpose of this script is to allow you to work on a section of a very long
 composition, without "lag" slowing you down. When MuseScore has to interpret
