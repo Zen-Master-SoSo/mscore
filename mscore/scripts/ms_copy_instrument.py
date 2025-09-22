@@ -1,6 +1,6 @@
 #  mscore/scripts/ms_copy_instrument.py
 #
-#  Copyright 2025 liyang <liyang@veronica>
+#  Copyright 2025 Leon Dionne <ldionne@dridesign.sh.cn>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
