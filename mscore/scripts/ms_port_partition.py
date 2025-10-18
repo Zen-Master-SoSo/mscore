@@ -31,12 +31,12 @@ from mscore import Score
 def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('filename', type = str, help = "MuseScore3 .mscz / .mscx file")
-	p.add_argument("--compact", "-c", action="store_true",
+	p.add_argument("--compact", "-c", action = "store_true",
 		help = "Reduce channels used by re-using channels for different parts using the same instrument")
-	p.add_argument("--dry-run", "-n", action="store_true",
+	p.add_argument("--dry-run", "-n", action = "store_true",
 		help = "Just show new port/channel layout")
-	p.add_argument("--verbose", "-v", action="store_true",
-		help="Show more detailed debug information")
+	p.add_argument("--verbose", "-v", action = "store_true",
+		help = "Show more detailed debug information")
 	p.epilog = __doc__
 	options = p.parse_args()
 	logging.basicConfig(

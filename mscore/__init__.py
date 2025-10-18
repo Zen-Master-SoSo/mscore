@@ -29,7 +29,7 @@ try:
 except ImportError:
 	from functools import lru_cache as cache
 from functools import reduce
-from operator import or_
+from operator import or_, add
 from zipfile import ZipFile
 from copy import deepcopy
 from sf2utils.sf2parse import Sf2File
@@ -203,6 +203,9 @@ class Score(SmartTree):
 		self._parts = { part.name:part \
 			for part in Part.from_elements(self.findall('./Part'), self) }
 
+	def score_node(self):
+		return self._score_node
+
 	def find(self, path):
 		return self._score_node.find(path)
 
@@ -219,7 +222,7 @@ class Score(SmartTree):
 
 	def save(self):
 		if self.ext == '.mscx':
-			self.tree.write(self.filename, xml_declaration=True, encoding='utf-8')
+			self.tree.write(self.filename, xml_declaration = True, encoding = 'utf-8')
 		elif self.ext == '.mscz':
 			with io.BytesIO() as bob:
 				self.tree.write(bob)
@@ -261,8 +264,40 @@ class Score(SmartTree):
 	def has_duplicate_part_names(self):
 		return len(self.duplicate_part_names()) > 0
 
+	def empty_parts(self):
+		"""
+		Returns list of (str) part names.
+		"""
+		return [ part.name for part in self.parts() if part.is_empty() ]
+
 	def instrument_names(self):
 		return [ p.instrument().name for p in self.parts() ]
+
+	def channel_monikers(self):
+		"""
+		Returns a list of (str) monikers which may be used to retrieve / delete an
+		individual channel.
+
+		Monikers are in the format "<Part.name>:<Channel.name>"
+		"""
+		return [ f'{part.name}:{channel.name}' \
+			for part in self.parts() \
+			for channel in part.instrument().channels() ]
+
+	def channel(self, moniker):
+		"""
+		Returns Channel object
+		"moniker" must be a string in the format:
+			"<Part.name>:<Channel.name>"
+		"""
+		part_name, channel_name = moniker.split(':', 1)
+		return self.part(part_name).instrument().channel(channel_name)
+
+	def empty_channels(self):
+		"""
+		Returns a list of (str) channel monikers.
+		"""
+		return reduce(add, [ part.empty_channels() for part in self.parts() ])
 
 	def concatenate_measures(self, source_score):
 		for staff in self.findall('./Staff'):
@@ -286,6 +321,15 @@ class Score(SmartTree):
 	def sound_fonts(self):
 		return list(set( el.text for el in self.findall('.//Synthesizer/Fluid/val') ))
 
+	def clear_synth(self):
+		for channel in self.findall('Channel'):
+			for node in channel.findall('controller'):
+				channel.remove(node)
+			for node in channel.findall('program'):
+				channel.remove(node)
+			for node in channel.findall('synti'):
+				channel.remove(node)
+
 	def __str__(self):
 		return f'<Score "{self.filename}">'
 
@@ -295,6 +339,12 @@ class Part(SmartNode):
 	def __init__(self, element, parent):
 		super().__init__(element, parent)
 		self._instrument = Instrument.from_element(self.find('./Instrument'), self)
+
+	def delete(self):
+		for staff in self.staffs():
+			for element in self._parent.findall(f'./Staff[@id="{staff.id}"]'):
+				self._parent.score_node().remove(element)
+		self._parent.score_node().remove(self.element)
 
 	def instrument(self):
 		return self._instrument
@@ -327,12 +377,40 @@ class Part(SmartNode):
 				return staff
 		raise IndexError
 
+	def is_empty(self):
+		return all(staff.is_empty() for staff in self.staffs())
+
 	def channel_switches_used(self):
 		"""
 		Returns a set of (str) StaffText/channelSwitch values
 		"""
 		sets = [ staff.channel_switches_used() for staff in self.staffs() ]
 		return reduce(or_, sets, set())
+
+	def channel_monikers(self):
+		"""
+		Returns a list of (str) monikers which may be used to retrieve / delete an
+		individual channel.
+
+		Monikers are in the format "<Part.name>:<Channel.name>"
+		"""
+		return [ f'{self.name}:{channel.name}' \
+			for channel in self.instrument().channels() ]
+
+	def empty_channels(self):
+		"""
+		Returns a list of (str) monikers which may be used to retrieve / delete an
+		individual channel.
+
+		Monikers are in the format "<Part.name>:<Channel.name>"
+		"""
+		if self.is_empty():
+			return self.channel_monikers()
+		switches = self.channel_switches_used()
+		default_name = self.instrument().default_channel().name
+		return [ f'{self.name}:{channel.name}' \
+			for channel in self.instrument().channels() \
+			if channel.name != default_name and channel.name not in switches ]
 
 	@property
 	def name(self):
@@ -363,6 +441,12 @@ class Instrument(SmartNode):
 		Returns list of Channel objects.
 		"""
 		return self._channels[name]
+
+	def default_channel(self):
+		"""
+		Returns Channel object; the first defined channel.
+		"""
+		return Channel(self.find('./Channel[1]'), self)
 
 	def channel_names(self):
 		"""
@@ -407,15 +491,6 @@ class Instrument(SmartNode):
 	def musicxml_id(self):
 		return self.element_text('instrumentId')
 
-	def clear_synth(self):
-		for channel in self.findall('Channel'):
-			for node in channel.findall('controller'):
-				channel.remove(node)
-			for node in channel.findall('program'):
-				channel.remove(node)
-			for node in channel.findall('synti'):
-				channel.remove(node)
-
 	def remove_channel(self, name):
 		node = self.find(f'Channel[@name="{name}"]')
 		if node:
@@ -438,6 +513,9 @@ class Instrument(SmartNode):
 
 
 class Channel(SmartNode):
+
+	def delete(self):
+		self._parent.element.remove(self.element)
 
 	def program(self):
 		el = self.find('program')
@@ -477,7 +555,7 @@ class Channel(SmartNode):
 
 	@property
 	def instrument_name(self):
-		return self.parent.name
+		return self._parent.name
 
 	@property
 	def voice_name(self):
@@ -558,7 +636,7 @@ class Channel(SmartNode):
 class Staff(SmartNode):
 
 	def measures(self):
-		score = self.parent.parent
+		score = self._parent.parent
 		return Measure.from_elements(score.findall(f'./Staff[@id="{self.id}"]/Measure'))
 
 	def is_empty(self):
@@ -572,7 +650,7 @@ class Staff(SmartNode):
 		"""
 		Removes all but the first measure, and removes all chords and rests within it.
 		"""
-		score = self.parent.parent
+		score = self._parent.parent
 		staff_node = score.find(f'./Staff[@id="{self.id}"]')
 		measure_nodes = staff_node.findall(f'./Measure')
 		for node in measure_nodes[1:]:
@@ -594,7 +672,7 @@ class Staff(SmartNode):
 		return reduce(or_, sets, set())
 
 	def part(self):
-		return self.parent
+		return self._parent
 
 	@property
 	def color(self):
@@ -645,7 +723,7 @@ class Staff(SmartNode):
 class Measure(SmartNode):
 
 	def is_empty(self):
-		return len(self.find_all('.//Note')) == 0
+		return len(self.findall('.//Note')) == 0
 
 	def channel_switches(self):
 		"""
@@ -653,6 +731,7 @@ class Measure(SmartNode):
 		"""
 		nodes = self.findall('./voice/StaffText/channelSwitch')
 		return set() if nodes is None else { node.attrib['name'] for node in nodes }
+
 
 class MetaTag(SmartNode):
 

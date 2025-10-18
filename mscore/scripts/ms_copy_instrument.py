@@ -86,9 +86,9 @@ def main():
 	p.add_argument('--part', '-p', type = str, nargs = '*',
 		help = 'Part to copy')
 	p.add_argument("--clef", "-c", action = "store_true",
-		help="Copy default clef definition as well")
+		help = "Copy default clef definition as well")
 	p.add_argument("--verbose", "-v", action = "store_true",
-		help="Show more detailed debug information")
+		help = "Show more detailed debug information")
 	p.epilog = __doc__
 	options = p.parse_args()
 	for tgt_filename in options.Targets:

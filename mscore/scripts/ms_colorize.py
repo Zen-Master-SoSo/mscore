@@ -33,8 +33,8 @@ def main():
 		help = "MuseScore3 file (.mscz or .mscx)")
 	p.add_argument('-c', '--color', type = str, default = "#888",
 		help = "Color value in #rgba format")
-	p.add_argument("--verbose", "-v", action="store_true",
-		help="Show more detailed debug information")
+	p.add_argument("--verbose", "-v", action = "store_true",
+		help = "Show more detailed debug information")
 	p.epilog = __doc__
 	options = p.parse_args()
 	logging.basicConfig(

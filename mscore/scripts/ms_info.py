@@ -27,18 +27,18 @@ def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type = str, nargs = '+',
 		help = "MuseScore3 file (.mscz or .mscx)")
-	p.add_argument('-p', '--parts', action="store_true")
-	p.add_argument('-i', '--instruments', action="store_true")
-	p.add_argument('-c', '--channels', action="store_true")
-	p.add_argument('-s', '--staffs', action="store_true")
-	p.add_argument('-l', '--length', action="store_true")
-	p.add_argument('-m', '--meta', action="store_true")
-	p.add_argument('--controllers', action="store_true",
+	p.add_argument('-p', '--parts', action = "store_true")
+	p.add_argument('-i', '--instruments', action = "store_true")
+	p.add_argument('-c', '--channels', action = "store_true")
+	p.add_argument('-s', '--staffs', action = "store_true")
+	p.add_argument('-l', '--length', action = "store_true")
+	p.add_argument('-m', '--meta', action = "store_true")
+	p.add_argument('--controllers', action = "store_true",
 		help = 'Show constant controller (CC) values, such as volume and pan settings')
-	p.add_argument('--channel-switches', action="store_true",
+	p.add_argument('--channel-switches', action = "store_true",
 		help = 'Show channel switches used. These are staff text which set the channel to be used.')
-	p.add_argument("--verbose", "-v", action="store_true",
-		help="Show more detailed debug information")
+	p.add_argument('--verbose', '-v', action = 'store_true',
+		help = 'Show more detailed debug information')
 	p.epilog = __doc__
 	options = p.parse_args()
 	logging.basicConfig(
@@ -51,28 +51,30 @@ def main():
 		if options.length:
 			print(f'{filename}: {score.length} measures')
 		chanlen = max(len(chan.name) for chan in score.channels())
-		chanfmt = '    {0:%ds} | port {1:02d} | channel {2:02d}' % chanlen
+		chanfmt = '    {0:%ds}    port {1:02d}    channel {2:02d}' % chanlen
 		if options.meta:
 			for tag in score.meta_tags():
 				print(f"{tag.name}\t{tag.value or ''}")
 		for part in score.parts():
 			if options.parts or options.channel_switches:
 				print(part.name)
-			if options.channel_switches:
-				switches = part.channel_switches_used()
-				print('  Channel switches used: ' + (', '.join(switches) if switches else 'None'))
 			if options.staffs:
 				for staff in part.staffs():
 					print(f'  Staff {staff.id} | {staff.type} | {staff.clef} clef | {len(staff.measures())} measures')
 			if options.instruments or options.channels or options.controllers:
 				inst = part.instrument()
-				print(f'  {inst.name}')
+				print(f'  Instrument: {inst.name}')
 				if options.channels or options.controllers:
 					for chan in inst.channels():
 						print(chanfmt.format(chan.name, chan.midi_port, chan.midi_channel))
 						if options.controllers:
 							print('      ' + ', '.join(f'{name}: {chan.controller_value(cc)}'
 								for cc, name in CC_NAMES.items() ))
+			if options.channel_switches:
+				switches = part.channel_switches_used()
+				print('  Channel switches used: ' + (', '.join(switches) if switches else 'None'))
+			if options.channels or options.controllers or options.channel_switches:
+				print()
 
 if __name__ == "__main__":
 	main()

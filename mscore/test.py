@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
 	try:
 
-		_,test_file = tempfile.mkstemp(suffix='.mscz')
+		_,test_file = tempfile.mkstemp(suffix = '.mscz')
 		shutil.copyfile(score_file, test_file)
 
 		test_score = Score(test_file)
