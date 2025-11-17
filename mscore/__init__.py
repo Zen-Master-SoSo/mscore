@@ -103,7 +103,7 @@ def instruments_file():
 	"""
 	Returns (str) path to "instruments.xml"
 	"""
-	for key in ['paths\instrumentlist1', 'paths\instrumentlist2']:
+	for key in ['paths\\instrumentlist1', 'paths\\instrumentlist2']:
 		filename = ini_file().get('application', key)
 		if exists(filename):
 			return filename
@@ -115,7 +115,7 @@ def default_sound_fonts():
 
 @cache
 def user_soundfont_dirs():
-	return ini_file()['application']['paths\mySoundfonts'].strip('"').split(';')
+	return ini_file()['application']['paths\\mySoundfonts'].strip('"').split(';')
 
 @cache
 def system_soundfont_dirs():
@@ -197,7 +197,7 @@ class Score(SmartTree):
 			with io.BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
 				self.tree = et.parse(bob)
 		else:
-			raise ValueError('Unsupported file extension: "{self.ext}"')
+			raise ValueError(f'Unsupported file extension: "{self.ext}"')
 		self.element = self.tree.getroot() # Necessary member of SmartTree
 		self._score_node = self.element.find('./Score')
 		self._parts = { part.name:part \
