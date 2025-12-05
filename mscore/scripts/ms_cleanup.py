@@ -65,7 +65,7 @@ def main():
 				print(f'Will delete synth for "{score.filename}"')
 			else:
 				score.clear_synth()
-				if verbose:
+				if options.verbose:
 					print(f'Deleted synth for "{score.filename}"')
 				score.save()
 
