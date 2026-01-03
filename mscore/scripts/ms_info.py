@@ -48,33 +48,36 @@ def main():
 
 	for filename in options.Filename:
 		score = Score(filename)
+		if options.verbose:
+			print(filename)
 		if options.length:
-			print(f'{filename}: {score.length} measures')
+			print(f'  {score.length} measures')
 		chanlen = max(len(chan.name) for chan in score.channels())
-		chanfmt = '    {0:%ds}    port {1:02d}    channel {2:02d}' % chanlen
+		chanfmt = '      {0:%ds}    port {1:02d}    channel {2:02d}' % chanlen
 		if options.meta:
 			for tag in score.meta_tags():
-				print(f"{tag.name}\t{tag.value or ''}")
+				print(f"  {tag.name}\t{tag.value or '--'}")
 		for part in score.parts():
 			if options.parts or options.channel_switches:
-				print(part.name)
+				print(f'  {part.name}')
 			if options.staffs:
 				for staff in part.staffs():
-					print(f'  Staff {staff.id} | {staff.type} | {staff.clef} clef | {len(staff.measures())} measures')
+					print(f'    Staff {staff.id} | {staff.type} | {staff.clef} clef | {len(staff.measures())} measures')
 			if options.instruments or options.channels or options.controllers:
 				inst = part.instrument()
-				print(f'  Instrument: {inst.name}')
+				print(f'    Instrument: {inst.name}')
 				if options.channels or options.controllers:
 					for chan in inst.channels():
 						print(chanfmt.format(chan.name, chan.midi_port, chan.midi_channel))
 						if options.controllers:
-							print('      ' + ', '.join(f'{name}: {chan.controller_value(cc)}'
+							print('        ' + ', '.join(f'{name}: {chan.controller_value(cc)}'
 								for cc, name in CC_NAMES.items() ))
 			if options.channel_switches:
 				switches = part.channel_switches_used()
-				print('  Channel switches used: ' + (', '.join(switches) if switches else 'None'))
+				print('    Channel switches used: ' + (', '.join(switches) if switches else 'None'))
 			if options.channels or options.controllers or options.channel_switches:
 				print()
+		print()
 
 if __name__ == "__main__":
 	main()
