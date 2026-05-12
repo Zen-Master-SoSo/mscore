@@ -30,8 +30,8 @@ Note that all sources MUST have the same part / instrument structure.
 """
 import logging, sys
 import argparse
-from os import linesep
-from shutil import copy2 as copy
+from os import linesep, chmod
+from shutil import copy
 from itertools import combinations
 from os.path import realpath
 from mscore import Score, VoiceName
@@ -67,6 +67,7 @@ def main():
 			p.error('More than one Source are the same file')
 
 	copy(options.Sources[0], target_path)
+	chmod(target_path, 0o660)
 	target = Score(target_path)
 
 	sources = [ Score(source_path) for source_path in source_paths[1:] ]

@@ -100,7 +100,6 @@ class InstrumentGroup(SmartNode):
 		return Instrument.from_elements(self.findall('./Instrument'), self)
 
 
-
 class Instrument(_Instrument):
 	"""
 	Object parsed from top-level "Instrument" node
