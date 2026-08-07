@@ -1,11 +1,11 @@
 *.pyc
 *.log
 *.geany
-*.mscz,
 __pycache__
-temp
-temp.*
-debug.*
+temp*
+debug*
 TODO
 /venv
 /dist
+
+mscz,
