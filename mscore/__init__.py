@@ -35,7 +35,7 @@ from copy import deepcopy
 from console_quiet import ConsoleQuiet
 from node_soso import SmartNode, SmartTree
 
-__version__ = "1.17.2"
+__version__ = "1.18.0"
 
 CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 				 'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']
