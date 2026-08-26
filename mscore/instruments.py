@@ -30,13 +30,13 @@ class Instruments(SmartTree):
 	Root tree parsed from "instruments.xml"
 	"""
 
-	def __new__(cls):
+	def __new__(cls, filename = None):
 		if not hasattr(cls, 'instance'):
 			cls.instance = super().__new__(cls)
 		return cls.instance
 
-	def __init__(self):
-		super().__init__(instruments_file())
+	def __init__(self, filename = None):
+		super().__init__(filename or instruments_file())
 		self._groups = { group.name:group for group in \
 			InstrumentGroup.from_elements(self.findall('./InstrumentGroup'), self) }
 		self._genres = { genre.id:genre for genre in \
@@ -44,6 +44,9 @@ class Instruments(SmartTree):
 		for instrument in self.instruments():
 			for id in instrument.genres():
 				self._genres[id]._instruments.append(instrument)
+
+	def __len__(self):
+		return len(list(self.instruments()))
 
 	def groups(self):
 		return self._groups.values()
@@ -57,8 +60,8 @@ class Instruments(SmartTree):
 		return self._genres.values()
 
 	def genre(self, id):
-		if id in self._genres:
-			return self._genres[id]
+		if id.lower() in self._genres:
+			return self._genres[id.lower()]
 		raise IndexError
 
 	def instruments(self):
@@ -74,6 +77,9 @@ class Genre(SmartNode):
 	def __init__(self, element, parent):
 		super().__init__(element, parent)
 		self._instruments = []
+
+	def __len__(self):
+		return len(list(self.instruments()))
 
 	@property
 	def id(self):
@@ -91,6 +97,9 @@ class InstrumentGroup(SmartNode):
 	"""
 	Object parsed from top-level "InstrumentGroup" node
 	"""
+
+	def __len__(self):
+		return len(list(self.instruments()))
 
 	@property
 	def name(self):

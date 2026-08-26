@@ -15,7 +15,6 @@ classifiers = [
 ]
 dynamic = ["version", "description"]
 dependencies = [
-	"sf2utils",
 	"appdirs",
 	"console_quiet",
 	"node_soso >= 1.3.0"

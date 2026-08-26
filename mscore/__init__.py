@@ -32,7 +32,6 @@ from functools import reduce
 from operator import or_, add
 from zipfile import ZipFile
 from copy import deepcopy
-from sf2utils.sf2parse import Sf2File
 from console_quiet import ConsoleQuiet
 from node_soso import SmartNode, SmartTree
 
@@ -137,24 +136,9 @@ def _user_sfpaths():
 def _system_sfpaths():
 	return { basename(path):path for path in system_soundfonts() }
 
-@cache
-def sf2(sf_name):
-	if sf_name in _user_sfpaths():
-		logging.debug('Inspecting user soundfont "%s"', sf_name)
-		return _get_parsed_sf2(_user_sfpaths()[sf_name])
-	if sf_name in _system_sfpaths():
-		logging.debug('Inspecting user system "%s"', sf_name)
-		return _get_parsed_sf2(_system_sfpaths()[sf_name])
-	raise Exception(f'SoundFont "{sf_name}" not found')
-
 def _iter_sf_paths(dirs):
 	for d in dirs:
 		yield from glob.glob(f'{d}/*.sf2')
-
-def _get_parsed_sf2(filename):
-	with open(filename, 'rb') as file:
-		with ConsoleQuiet():
-			return Sf2File(file)
 
 
 # ----------------------------
@@ -473,7 +457,14 @@ class Instrument(SmartNode):
 
 	@property
 	def name(self):
+		"""
+		Tries "long_name" and falls back on "track_name"
+		"""
 		return self.long_name or self.track_name
+
+	@property
+	def short_name(self):
+		return self.element_text('shortName')
 
 	@property
 	def long_name(self):
@@ -484,12 +475,58 @@ class Instrument(SmartNode):
 		return self.element_text('trackName')
 
 	@property
-	def short_name(self):
-		return self.element_text('shortName')
-
-	@property
 	def musicxml_id(self):
 		return self.element_text('instrumentId')
+
+	@property
+	def description(self):
+		return self.element_text('description')
+
+	@property
+	def clef(self):
+		"""
+		Returns (str) like "G"
+		Possible values are :
+			G, F, PERC, G8vb, G8va, F8vb, G15ma, F8va, C1, C2, C3, C4, C5
+		"""
+		return self.element_text('clef')
+
+	@property
+	def barline_span(self):
+		"""
+		Returns (int) number of bars this instrument usually receives.
+		"""
+		return int(self.element_text('barlineSpan'))
+
+	@property
+	def amateur_pitch_range(self):
+		"""
+		Returns (tuple) the lowest pitch and the highest pitch which an ameteur is
+		expected to be able to play.
+		"""
+		if s := self.element_text('aPitchRange'):
+			lo, hi = s.split('-')
+			return int(lo), int(hi)
+		return None
+
+	@property
+	def professional_pitch_range(self):
+		"""
+		Returns (tuple) the lowest pitch and the highest pitch which a professional
+		should be able to play.
+		"""
+		if s := self.element_text('pPitchRange'):
+			lo, hi = s.split('-')
+			return int(lo), int(hi)
+		return None
+
+	@property
+	def transpose_diatonic(self):
+		return self.element_text('transposeDiatonic')
+
+	@property
+	def transpose_chromatic(self):
+		return self.element_text('transposeChromatic')
 
 	def remove_channel(self, name):
 		node = self.find(f'Channel[@name="{name}"]')
