@@ -28,14 +28,13 @@ more pleasant.
 
 Note that all sources MUST have the same part / instrument structure.
 """
-import logging, sys
-import argparse
+import logging, sys, argparse
 from os import linesep, chmod
+from os.path import realpath
 from shutil import copy
 from itertools import combinations
-from os.path import realpath
-from mscore import Score, VoiceName
-from mscore.fuzzy import FuzzyCandidate, FuzzyName
+from mscore import Score
+
 
 def main():
 	p = argparse.ArgumentParser()
@@ -73,8 +72,8 @@ def main():
 	sources = [ Score(source_path) for source_path in source_paths[1:] ]
 	for src in sources:
 		if sorted(src.part_names()) != sorted(target.part_names()):
-			p.error(f'Source "{src.basename}" does not have the same part names as Source "{target.basename}"' +
-				'\nAll sources must have the same part names')
+			p.error(f'Source "{src.basename}" does not have the same part names as ' +
+				f'Source "{target.basename}"\nAll sources must have the same part names')
 
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
@@ -85,8 +84,9 @@ def main():
 		target.concatenate_measures(source)
 	target.save()
 
+
 if __name__ == "__main__":
-	main()
+	sys.exit(main() or 0)
 
 
 #  end mscore/scripts/ms_colorize.py

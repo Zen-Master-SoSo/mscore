@@ -20,7 +20,7 @@
 """
 Match instrument names in a sort of fuzzy way.
 """
-import re, logging
+import re
 from collections import namedtuple
 try:
 	from functools import cache

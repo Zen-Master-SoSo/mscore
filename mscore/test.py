@@ -19,28 +19,29 @@
 #
 import os, logging, shutil, tempfile
 from subprocess import run, CalledProcessError
-from mscore import *
+from mscore import (Score, user_soundfont_dirs, user_soundfonts,
+	system_soundfont_dirs, system_soundfonts)
 
 
-def channel_repr(score):
-	return [ f'{channel.midi_port}:{channel.midi_channel}' \
-		for channel in score.channels() ]
+def channel_repr(check_score):
+	return [ f'{check_chan.midi_port}:{check_chan.midi_channel}' \
+		for check_chan in check_score.channels() ]
 
-def assert_channel_sequence(score):
-	port = 1
-	channel = 1
-	for chan in score.channels():
-		assert(chan.midi_port == port)
-		assert(chan.midi_channel == channel)
-		channel += 1
-		if channel == 17:
-			port += 1
-			channel = 1
+def assert_channel_sequence(check_score):
+	check_port = 1
+	check_chan = 1
+	for chan_object in check_score.channels():
+		assert chan_object.midi_port == check_port
+		assert chan_object.midi_channel == check_chan
+		check_chan += 1
+		if check_chan == 17:
+			check_port += 1
+			check_chan = 1
 
 
 if __name__ == "__main__":
-	log_format = "[%(filename)24s:%(lineno)-4d] %(levelname)-8s %(message)score"
-	logging.basicConfig(level = logging.DEBUG, format = log_format)
+	logging.basicConfig(level = logging.DEBUG,
+		format = "[%(filename)24s:%(lineno)-4d] %(levelname)-8s %(message)score")
 	print('user_soundfont_dirs', user_soundfont_dirs())
 	print('user_soundfonts', user_soundfonts())
 	print('system_soundfont_dirs', system_soundfont_dirs())
@@ -60,9 +61,9 @@ if __name__ == "__main__":
 		shutil.copyfile(score_file, test_file)
 
 		test_score = Score(test_file)
-		assert(test_score.sound_fonts() == sf_list)
-		assert(test_score.instrument_names() == instrument_names)
-		assert(channel_repr(test_score) == score_chan_repr)
+		assert test_score.sound_fonts() == sf_list
+		assert test_score.instrument_names() == instrument_names
+		assert channel_repr(test_score) == score_chan_repr
 
 		print('Modifying ...')
 		port = 1
@@ -75,21 +76,21 @@ if __name__ == "__main__":
 				port += 1
 				channel = 1
 		test_chan_repr = channel_repr(test_score)
-		assert(test_chan_repr != score_chan_repr)
+		assert test_chan_repr != score_chan_repr
 
 		test_score.save()
 		print('Test score saved at', test_file)
 
 		reloaded_score = Score(test_file)
-		assert(reloaded_score.sound_fonts() == sf_list)
-		assert(reloaded_score.instrument_names() == instrument_names)
+		assert reloaded_score.sound_fonts() == sf_list
+		assert reloaded_score.instrument_names() == instrument_names
 		reloaded_chan_repr = channel_repr(reloaded_score)
 
 		assert_channel_sequence(reloaded_score)
 
 		test_export_file = os.path.splitext(test_file)[0] + '.mscx'
 		try:
-			run(['musescore3', '--export-to', test_export_file, test_file])
+			run(['musescore3', '--export-to', test_export_file, test_file], check = True)
 		except CalledProcessError as cpe:
 			print(cpe)
 		else:

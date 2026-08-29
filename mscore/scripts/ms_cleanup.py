@@ -17,11 +17,12 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+#  pylint: disable = duplicate-code
+#
 """
 Removes unused elements from a MuseScore3 score.
 """
-import logging
-import argparse
+import logging, sys, argparse
 from operator import and_
 from functools import reduce
 from mscore import Score
@@ -68,6 +69,8 @@ def main():
 				if options.verbose:
 					print(f'Deleted synth for "{score.filename}"')
 				score.save()
+
+	# pylint: disable = too-many-nested-blocks
 
 	elif options.parts:
 		if options.batch:
@@ -139,6 +142,8 @@ def main():
 
 
 if __name__ == "__main__":
-	main()
+	sys.exit(main() or 0)
 
+
+#  pylint: enable = too-many-nested-blocks
 #  end mscore/scripts/ms_cleanup.py

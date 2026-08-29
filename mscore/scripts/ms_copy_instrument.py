@@ -24,17 +24,20 @@ This script will attempt to match the part name in both Source and Target, and
 copy the best matching part. You will be prompted to confirm the selection if
 there is no part name which matches exactly.
 """
-import logging, sys
-import argparse
+import logging, sys, argparse
 from os.path import realpath
-from mscore import Score, VoiceName
+from column_soso import StringColumns
+from mscore import Score
 from mscore.fuzzy import FuzzyCandidate, FuzzyName
 
 options = None
 
+
 def prompt_replacement(source_part, tgt_part):
-	ans = input(f' Copy "{source_part}" from "{options.Source}" to "{tgt_part}" in "{options.Target}"? [y/N]')
+	ans = input(f' Copy "{source_part}" from "{options.Source}" ' + \
+		f'to "{tgt_part}" in "{options.Target}"? [y/N]')
 	return ans[0].lower() == 'y'
+
 
 def prompt_for_source(source, part_name):
 	candidates = [ FuzzyCandidate(p.name, i) \
@@ -47,20 +50,24 @@ def prompt_for_source(source, part_name):
 		print(f' {idx + 1}. {result}')
 	return _get_selection('Select the part to copy over: [1] ', results)
 
+
 def prompt_for_target(source, target, part_name):
 	candidates = [ FuzzyCandidate(p.name, i) \
 		for i, p in enumerate(target.parts()) ]
 	results = FuzzyName(part_name).score_candidates(candidates)
 	if results[0].score < 1.0:
 		results = [ r.candidate.name for r in results if r.score > 0 ]
-		print(f'Confirm which part in "{target.basename}" you want to replace')
-		print(f'with the instrument from "{source.basename}" "{part_name}":')
-		print(f' "{part_name}" matches:')
-		for idx, result in enumerate(results):
-			print(f' {idx + 1}. {result}')
-		return _get_selection('Select the target part (s to skip): [1] ', results)
-	else:
-		return results[0].candidate.name
+		if results:
+			print(f'Select which part in "{target.basename}" you want to replace')
+			print(f'with the instrument from "{source.basename}" "{part_name}":')
+			print(f'  The name "{part_name}" matches:')
+			for idx, result in enumerate(results):
+				print(f' {idx + 1}. {result}')
+			return _get_selection('Select the target part (s to skip): [1] ', results)
+		print(f'No part name in "{target.basename}" is close to "{part_name}"')
+		return None
+	return results[0].candidate.name
+
 
 def _get_selection(prompt, results):
 	while True:
@@ -76,6 +83,7 @@ def _get_selection(prompt, results):
 			sys.exit(1)
 		except IndexError:
 			print(f'"{selection} is an invalid choice. Try again')
+
 
 def main():
 	p = argparse.ArgumentParser()
@@ -101,10 +109,18 @@ def main():
 
 	source = Score(options.Source[0])
 	src_parts = source.part_names()
+	print(f'Source: "{source.basename}"')
+	print('-' * (len(source.basename) + 10))
+	StringColumns(src_parts).print()
+	print()
 	src_parts_lower = [ part_name.lower() for part_name in src_parts ]
 	parts_to_replace = options.part or src_parts
 	for tgt_filename in options.Targets:
 		target = Score(tgt_filename)
+		print(f'Target: "{target.basename}"')
+		print('-' * (len(target.basename) + 10))
+		StringColumns(target.part_names()).print()
+		print()
 		for part_name in parts_to_replace:
 			part_name = part_name.lower()
 			if part_name in src_parts_lower:
@@ -113,7 +129,7 @@ def main():
 				part_name = prompt_for_source(source, part_name)
 			tgt_part_name = prompt_for_target(source, target, part_name)
 			if tgt_part_name:
-				print(f'  *** Copy {source.basename} {part_name} to {target.basename} {tgt_part_name} ***')
+				print(f'*** Copy {source.basename} {part_name} to {target.basename} {tgt_part_name} ***')
 				target.part(tgt_part_name).replace_instrument(source.part(part_name).instrument())
 				if options.clef:
 					print('      copy clef')
@@ -121,8 +137,9 @@ def main():
 		target.save()
 		print()
 
+
 if __name__ == "__main__":
-	main()
+	sys.exit(main() or 0)
 
 
 #  end mscore/scripts/ms_colorize.py

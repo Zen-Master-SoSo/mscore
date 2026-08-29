@@ -17,15 +17,17 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+#  pylint: disable = duplicate-code
+#
 """
 Changes the staff colors.
 
 By default, staff colors are changed to a medium gray, allowing notes to stand
 out with lines still visible.
 """
-import logging
-import argparse
+import logging, sys, argparse
 from mscore import Score
+
 
 def main():
 	p = argparse.ArgumentParser()
@@ -44,6 +46,7 @@ def main():
 
 	for filename in options.Filename:
 		score = Score(filename)
+		r, g, b, a = None, None, None, None
 		h = options.color.lstrip('#')
 		if len(h) == 3:
 			r, g, b = tuple(int(h[i], 16) * 16 + int(h[i], 16) for i in range(3))
@@ -61,6 +64,10 @@ def main():
 		for staff in score.staffs():
 			staff.color = color_dict
 		score.save()
+
+
+if __name__ == "__main__":
+	sys.exit(main() or 0)
 
 
 #  end mscore/scripts/ms_colorize.py

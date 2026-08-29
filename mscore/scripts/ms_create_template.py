@@ -25,6 +25,7 @@ save it with an .mscz format from there.
 import logging, sys, argparse
 from mscore import Score
 
+
 def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type = str, nargs = 1,
@@ -48,6 +49,7 @@ def main():
 
 
 if __name__ == "__main__":
-	main()
+	sys.exit(main() or 0)
+
 
 #  end mscore/scripts/ms_create_template.py

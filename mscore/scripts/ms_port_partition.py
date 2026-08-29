@@ -17,6 +17,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+#  pylint: disable = duplicate-code
+#
 """
 Re-assigns MIDI port/channels grouped by instrument.
 
@@ -24,9 +26,9 @@ Every instrument's "voice" is assigned a sequential MIDI channel. If an
 instrument has more "voices" (arco, staccato, tremolo, etc.)than there
 remaining channels on a port, they are assigned to the next available port.
 """
-import logging
-import argparse
+import logging, sys, argparse
 from mscore import Score
+
 
 def main():
 	p = argparse.ArgumentParser()
@@ -52,13 +54,13 @@ def main():
 		inst = part.instrument()
 		inst_name = inst.name
 		chans_to_map = [ chan for chan in inst.channels() \
-			if not '{}.{}'.format(inst_name, chan.name) in mapped_channels ] \
+			if not f'{inst_name}.{chan.name}' in mapped_channels ] \
 			if options.compact else inst.channels()
 		if channel_number + len(chans_to_map) > 17:
 			port_number += 1
 			channel_number = 1
 		for chan in inst.channels():
-			key = '{}.{}'.format(inst_name, chan.name)
+			key = f'{inst_name}.{chan.name}'
 			if options.compact and key in mapped_channels:
 				chan.midi_port = mapped_channels[key][0]
 				chan.midi_channel = mapped_channels[key][1]
@@ -78,7 +80,7 @@ def main():
 
 
 if __name__ == "__main__":
-	main()
+	sys.exit(main() or 0)
 
 
 #  end mscore/scripts/ms_port_partition.py

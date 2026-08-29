@@ -20,9 +20,11 @@
 """
 A python library for opening/inspecting/modifying MuseScore3 files.
 """
-import os, sys, logging, configparser, glob, io
-from os.path import join, basename, splitext, exists
-from appdirs import user_config_dir, user_data_dir
+import os, sys, logging
+from configparser import ConfigParser, NoSectionError
+from glob import glob
+from io import BytesIO
+from os.path import join, basename, splitext, exists, isdir
 import xml.etree.ElementTree as et
 try:
 	from functools import cache
@@ -32,10 +34,12 @@ from functools import reduce
 from operator import or_, add
 from zipfile import ZipFile
 from copy import deepcopy
+from appdirs import user_config_dir, user_data_dir
 from console_quiet import ConsoleQuiet
 from node_soso import SmartNode, SmartTree
 
 __version__ = "1.18.0"
+
 
 CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
 				 'marcato', 'staccato', 'flageoletti', 'slap', 'pop', 'pizzicato']
@@ -94,7 +98,7 @@ def ini_file():
 	the (current) scope of this project. USE AT YOUR OWN RISK!
 	"""
 	filename = join(user_config_dir('MuseScore'), 'MuseScore3.ini')
-	config = configparser.ConfigParser()
+	config = ConfigParser()
 	config.read(filename)
 	return config
 
@@ -103,9 +107,21 @@ def instruments_file():
 	Returns (str) path to "instruments.xml"
 	"""
 	for key in ['paths\\instrumentlist1', 'paths\\instrumentlist2']:
-		filename = ini_file().get('application', key)
-		if exists(filename):
-			return filename
+		try:
+			filename = ini_file().get('application', key)
+			if exists(filename):
+				return filename
+		except NoSectionError:
+			pass
+	for dirname in glob('/usr/share/mscore*'):
+		if isdir(dirname):
+			filename = join(dirname, 'instruments.xml')
+			if exists(filename):
+				return filename
+			filename = join(dirname, 'instruments', 'instruments.xml')
+			if exists(filename):
+				return filename
+	return None
 
 @cache
 def default_sound_fonts():
@@ -114,7 +130,10 @@ def default_sound_fonts():
 
 @cache
 def user_soundfont_dirs():
-	return ini_file()['application']['paths\\mySoundfonts'].strip('"').split(';')
+	try:
+		return ini_file()['application']['paths\\mySoundfonts'].strip('"').split(';')
+	except KeyError:
+		return []
 
 @cache
 def system_soundfont_dirs():
@@ -138,13 +157,16 @@ def _system_sfpaths():
 
 def _iter_sf_paths(dirs):
 	for d in dirs:
-		yield from glob.glob(f'{d}/*.sf2')
+		yield from glob(f'{d}/*.sf2')
 
 
 # ----------------------------
 # MuseScore classes
 
 class Score(SmartTree):
+	"""
+	Object -oriented interface to MuseScore score file (.mscx or .mscz)
+	"""
 
 	__default_sfnames = None
 	__user_sfpaths = None
@@ -158,6 +180,7 @@ class Score(SmartTree):
 	SYSTEM_SF2 = 1
 	MISSING_SF2 = 3
 
+	# pylint: disable-next = super-init-not-called
 	def __init__(self, filename):
 		self.filename = filename
 		self.basename = basename(filename)
@@ -178,7 +201,7 @@ class Score(SmartTree):
 					break
 			if self.__zip_mscx_index is None:
 				raise RuntimeError("No mscx entries found in zip file")
-			with io.BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
+			with BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
 				self.tree = et.parse(bob)
 		else:
 			raise ValueError(f'Unsupported file extension: "{self.ext}"')
@@ -208,7 +231,7 @@ class Score(SmartTree):
 		if self.ext == '.mscx':
 			self.tree.write(self.filename, xml_declaration = True, encoding = 'utf-8')
 		elif self.ext == '.mscz':
-			with io.BytesIO() as bob:
+			with BytesIO() as bob:
 				self.tree.write(bob)
 				self.__zip_entries[self.__zip_mscx_index]['data'] = bob.getvalue()
 			with ZipFile(self.filename, 'w') as zipfile:
@@ -285,8 +308,8 @@ class Score(SmartTree):
 
 	def concatenate_measures(self, source_score):
 		for staff in self.findall('./Staff'):
-			id = staff.attrib['id']
-			source_measures = source_score.findall(f'./Staff[@id="{id}"]/Measure')
+			staff_id = staff.attrib['staff_id']
+			source_measures = source_score.findall(f'./Staff[@staff_id="{staff_id}"]/Measure')
 			staff.extend(source_measures)
 
 	def meta_tags(self):
@@ -319,6 +342,11 @@ class Score(SmartTree):
 
 
 class Part(SmartNode):
+	"""
+	Represents a part in the score.
+
+	Contains a single Instrument.
+	"""
 
 	def __init__(self, element, parent):
 		super().__init__(element, parent)
@@ -355,9 +383,9 @@ class Part(SmartNode):
 	def staffs(self):
 		return Staff.from_elements(self.findall('Staff'), self)
 
-	def staff(self, id):
+	def staff(self, staff_id):
 		for staff in self.staffs():
-			if staff.id == id:
+			if staff.staff_id == staff_id:
 				return staff
 		raise IndexError
 
@@ -405,6 +433,9 @@ class Part(SmartNode):
 
 
 class Instrument(SmartNode):
+	"""
+	Represents an Instrument which plays a Part.
+	"""
 
 	def __init__(self, element, parent):
 		super().__init__(element, parent)
@@ -550,6 +581,10 @@ class Instrument(SmartNode):
 
 
 class Channel(SmartNode):
+	"""
+	Represents a single audio channel. An instrument may contain multiple Channels,
+	one for each articulation. These are set using "staff text" in MuseScore.
+	"""
 
 	def delete(self):
 		self._parent.element.remove(self.element)
@@ -671,6 +706,9 @@ class Channel(SmartNode):
 
 
 class Staff(SmartNode):
+	"""
+	Represents an entire staff of a Part, containing multiple Measures.
+	"""
 
 	def measures(self):
 		score = self._parent.parent
@@ -689,7 +727,7 @@ class Staff(SmartNode):
 		"""
 		score = self._parent.parent
 		staff_node = score.find(f'./Staff[@id="{self.id}"]')
-		measure_nodes = staff_node.findall(f'./Measure')
+		measure_nodes = staff_node.findall('./Measure')
 		for node in measure_nodes[1:]:
 			staff_node.remove(node)
 		for node in measure_nodes[0].getchildren():
@@ -758,6 +796,9 @@ class Staff(SmartNode):
 
 
 class Measure(SmartNode):
+	"""
+	Represents a single measure (in a single staff).
+	"""
 
 	def is_empty(self):
 		return len(self.findall('.//Note')) == 0
@@ -771,6 +812,9 @@ class Measure(SmartNode):
 
 
 class MetaTag(SmartNode):
+	"""
+	Tags which provide additional information for a Score.
+	"""
 
 	@property
 	def name(self):

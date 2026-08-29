@@ -20,7 +20,6 @@
 """
 Provides XML parsing and object-oriented interface for "instruments.xml"
 """
-import logging
 from node_soso import SmartNode, SmartTree
 from mscore import instruments_file, Instrument as _Instrument
 
@@ -42,8 +41,8 @@ class Instruments(SmartTree):
 		self._genres = { genre.id:genre for genre in \
 			Genre.from_elements(self.findall('./Genre'), self) }
 		for instrument in self.instruments():
-			for id in instrument.genres():
-				self._genres[id]._instruments.append(instrument)
+			for genre_id in instrument.genres():
+				self._genres[genre_id]._instruments.append(instrument)
 
 	def __len__(self):
 		return len(list(self.instruments()))
@@ -59,9 +58,9 @@ class Instruments(SmartTree):
 	def genres(self):
 		return self._genres.values()
 
-	def genre(self, id):
-		if id.lower() in self._genres:
-			return self._genres[id.lower()]
+	def genre(self, genre_id):
+		if genre_id.lower() in self._genres:
+			return self._genres[genre_id.lower()]
 		raise IndexError
 
 	def instruments(self):

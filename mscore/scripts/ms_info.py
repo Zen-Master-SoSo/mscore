@@ -17,11 +17,14 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+#  pylint: disable = duplicate-code
+#
 """
 Show various information about a MuseScore3 score file.
 """
 import logging, sys, argparse
 from mscore import Score, CC_NAMES
+
 
 def main():
 	p = argparse.ArgumentParser()
@@ -46,6 +49,7 @@ def main():
 		format = "[%(filename)24s:%(lineno)3d] %(message)s"
 	)
 
+	# pylint: disable = too-many-nested-blocks
 	for filename in options.Filename:
 		score = Score(filename)
 		if options.verbose:
@@ -62,7 +66,8 @@ def main():
 				print(f'  {part.name}')
 			if options.staffs:
 				for staff in part.staffs():
-					print(f'    Staff {staff.id} | {staff.type} | {staff.clef} clef | {len(staff.measures())} measures')
+					print(f'    Staff {staff.id} | {staff.type} | ' + \
+						f'{staff.clef} clef | {len(staff.measures())} measures')
 			if options.instruments or options.channels or options.controllers:
 				inst = part.instrument()
 				print(f'    Instrument: {inst.name}')
@@ -79,7 +84,10 @@ def main():
 				print()
 		print()
 
-if __name__ == "__main__":
-	main()
 
+if __name__ == "__main__":
+	sys.exit(main() or 0)
+
+
+# pylint: enable = too-many-nested-blocks
 #  end mscore/scripts/ms_info.py
