@@ -72,7 +72,7 @@ class VoiceName:
 
 	def __init__(self, instrument_name, voice):
 		self.instrument_name = instrument_name
-		self.voice = voice
+		self.voice = None if voice is None else voice.lower()
 
 	def __str__(self):
 		return f'{self.instrument_name} ({self.voice or DEFAULT_VOICE})'
@@ -80,6 +80,7 @@ class VoiceName:
 	def __eq__(self, other):
 		return self.instrument_name == other.instrument_name \
 			and self.voice == other.voice
+
 
 def is_score(filename):
 	return splitext(filename)[-1] in ['.mscx', '.mscz']
