@@ -38,7 +38,7 @@ from appdirs import user_config_dir, user_data_dir
 from console_quiet import ConsoleQuiet
 from node_soso import SmartNode, SmartTree
 
-__version__ = "1.18.1"
+__version__ = "1.19.0"
 
 
 CHANNEL_NAMES = ['normal', 'open', 'mute', 'arco', 'tremolo', 'crescendo',
