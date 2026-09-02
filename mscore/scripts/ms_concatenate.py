@@ -42,8 +42,8 @@ def main():
 		help = 'MuseScore3 score file to copy measures from')
 	p.add_argument('Target', type = str, nargs = 1,
 		help = 'MuseScore3 score file to copy concatenated measures to')
-	p.add_argument("--verbose", "-v", action = "store_true",
-		help = "Show more detailed debug information")
+	p.add_argument('--verbose', '-v', action = 'store_true',
+		help = 'Show more detailed debug information')
 	p.epilog = __doc__
 	options = p.parse_args()
 	if len(options.Sources) < 2:

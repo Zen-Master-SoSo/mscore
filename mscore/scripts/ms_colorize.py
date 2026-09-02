@@ -32,16 +32,16 @@ from mscore import Score
 def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type = str, nargs = '+',
-		help = "MuseScore3 file (.mscz or .mscx)")
-	p.add_argument('-c', '--color', type = str, default = "#888",
-		help = "Color value in #rgba format")
-	p.add_argument("--verbose", "-v", action = "store_true",
-		help = "Show more detailed debug information")
+		help = 'MuseScore3 file (.mscz or .mscx)')
+	p.add_argument('-c', '--color', type = str, default = '#888',
+		help = 'Color value in #rgba format')
+	p.add_argument('--verbose', '-v', action = 'store_true',
+		help = 'Show more detailed debug information')
 	p.epilog = __doc__
 	options = p.parse_args()
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
-		format = "[%(filename)24s:%(lineno)3d] %(message)s"
+		format = '[%(filename)24s:%(lineno)3d] %(message)s'
 	)
 
 	for filename in options.Filename:

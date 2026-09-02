@@ -32,13 +32,13 @@ def main():
 		help = 'MuseScore3 file (.mscz or .mscx)')
 	p.add_argument('Target', type = str, nargs = '?',
 		help = 'Target generated template (.mscx). If not given, "template.mscx" will be used')
-	p.add_argument("--verbose", "-v", action = "store_true",
-		help = "Show more detailed debug information")
+	p.add_argument('--verbose', '-v', action = 'store_true',
+		help = 'Show more detailed debug information')
 	p.epilog = __doc__
 	options = p.parse_args()
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
-		format = "[%(filename)24s:%(lineno)3d] %(message)s"
+		format = '[%(filename)24s:%(lineno)3d] %(message)s'
 	)
 
 	score = Score(options.Filename[0])

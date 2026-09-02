@@ -17,11 +17,19 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import os, logging, shutil, tempfile
+import logging
+from pathlib import Path
+from shutil import copyfile
+from tempfile import mkstemp
 from subprocess import run, CalledProcessError
 from mscore import (Score, user_soundfont_dirs, user_soundfonts,
 	system_soundfont_dirs, system_soundfonts)
 
+
+def pprint(list_):
+	for item in list_:
+		print(f'  {item}')
+	print()
 
 def channel_repr(check_score):
 	return [ f'{check_chan.midi_port}:{check_chan.midi_channel}' \
@@ -42,26 +50,36 @@ def assert_channel_sequence(check_score):
 if __name__ == "__main__":
 	logging.basicConfig(level = logging.DEBUG,
 		format = "[%(filename)24s:%(lineno)-4d] %(levelname)-8s %(message)score")
-	print('user_soundfont_dirs', user_soundfont_dirs())
-	print('user_soundfonts', user_soundfonts())
-	print('system_soundfont_dirs', system_soundfont_dirs())
-	print('system_soundfonts', system_soundfonts())
 
-	score_file = os.path.join(os.path.dirname(__file__), 'res', 'score.mscz')
-	score = Score(score_file)
-	sf_list = score.sound_fonts()
-	print('sf_list:', sf_list)
+	print('user_soundfont_dirs:')
+	pprint(user_soundfont_dirs())
+	print('user_soundfonts:')
+	pprint(user_soundfonts())
+	print('system_soundfont_dirs:')
+	pprint(system_soundfont_dirs())
+	print('system_soundfonts:')
+	pprint(system_soundfonts())
+
+	score_path = Path(__file__).parent.joinpath('mscore', 'res', 'score.mscz')
+	score = Score(score_path)
+
+	score_sound_fonts = score.sound_fonts()
+	print('score_sound_fonts:')
+	pprint(score_sound_fonts)
 	instrument_names = score.instrument_names()
-	print('instrument_names:', instrument_names)
+	print('instrument_names:')
+	pprint(instrument_names)
+
 	score_chan_repr = channel_repr(score)
 
 	try:
 
-		_,test_file = tempfile.mkstemp(suffix = '.mscz')
-		shutil.copyfile(score_file, test_file)
+		_, test_file = mkstemp(suffix = '.mscz')
+		test_path = Path(test_file)
+		copyfile(score_path, test_path)
 
-		test_score = Score(test_file)
-		assert test_score.sound_fonts() == sf_list
+		test_score = Score(test_path)
+		assert test_score.sound_fonts() == score_sound_fonts
 		assert test_score.instrument_names() == instrument_names
 		assert channel_repr(test_score) == score_chan_repr
 
@@ -79,29 +97,31 @@ if __name__ == "__main__":
 		assert test_chan_repr != score_chan_repr
 
 		test_score.save()
-		print('Test score saved at', test_file)
+		print('Test score saved at', test_path)
 
-		reloaded_score = Score(test_file)
-		assert reloaded_score.sound_fonts() == sf_list
+		reloaded_score = Score(test_path)
+		assert reloaded_score.sound_fonts() == score_sound_fonts
 		assert reloaded_score.instrument_names() == instrument_names
 		reloaded_chan_repr = channel_repr(reloaded_score)
 
 		assert_channel_sequence(reloaded_score)
 
-		test_export_file = os.path.splitext(test_file)[0] + '.mscx'
+		test_export_path = test_path.with_suffix('.mscx')
 		try:
-			run(['musescore3', '--export-to', test_export_file, test_file], check = True)
+			run(['musescore3', '--export-to', test_export_path, test_path], check = True)
 		except CalledProcessError as cpe:
 			print(cpe)
 		else:
-			test_export_score = Score(test_export_file)
+			test_export_score = Score(test_export_path)
 			assert_channel_sequence(test_export_score)
 		finally:
-			os.unlink(test_export_file)
+			test_export_path.unlink()
 
 	except Exception as e:
 		print(e)
+	else:
+		print('No errors')
 	finally:
-		os.unlink(test_file)
+		test_path.unlink()
 
 #  end mscore/test.py

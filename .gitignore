@@ -1,6 +1,7 @@
 *.pyc
 *.log
 *.geany
+*.sig
 __pycache__
 temp*
 debug*

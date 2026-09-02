@@ -29,16 +29,16 @@ from mscore import Score, CC_NAMES
 def main():
 	p = argparse.ArgumentParser()
 	p.add_argument('Filename', type = str, nargs = '+',
-		help = "MuseScore3 file (.mscz or .mscx)")
-	p.add_argument('-p', '--parts', action = "store_true")
-	p.add_argument('-i', '--instruments', action = "store_true")
-	p.add_argument('-c', '--channels', action = "store_true")
-	p.add_argument('-s', '--staffs', action = "store_true")
-	p.add_argument('-l', '--length', action = "store_true")
-	p.add_argument('-m', '--meta', action = "store_true")
-	p.add_argument('--controllers', action = "store_true",
+		help = 'MuseScore3 file (.mscz or .mscx)')
+	p.add_argument('-p', '--parts', action = 'store_true')
+	p.add_argument('-i', '--instruments', action = 'store_true')
+	p.add_argument('-c', '--channels', action = 'store_true')
+	p.add_argument('-s', '--staffs', action = 'store_true')
+	p.add_argument('-l', '--length', action = 'store_true')
+	p.add_argument('-m', '--meta', action = 'store_true')
+	p.add_argument('--controllers', action = 'store_true',
 		help = 'Show constant controller (CC) values, such as volume and pan settings')
-	p.add_argument('--channel-switches', action = "store_true",
+	p.add_argument('--channel-switches', action = 'store_true',
 		help = 'Show channel switches used. These are staff text which set the channel to be used.')
 	p.add_argument('--verbose', '-v', action = 'store_true',
 		help = 'Show more detailed debug information')
@@ -46,7 +46,7 @@ def main():
 	options = p.parse_args()
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
-		format = "[%(filename)24s:%(lineno)3d] %(message)s"
+		format = '[%(filename)24s:%(lineno)3d] %(message)s'
 	)
 
 	# pylint: disable = too-many-nested-blocks

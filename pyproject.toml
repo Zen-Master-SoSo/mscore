@@ -16,8 +16,8 @@ classifiers = [
 dynamic = ["version", "description"]
 dependencies = [
 	"appdirs",
-	"column_soso >= 1.1.0",
-	"console_quiet >= 1.0.1",
+	"column_soso >= 1.1.1",
+	"console_quiet >= 1.0.2",
 	"node_soso >= 1.5.0"
 ]
 
@@ -25,13 +25,14 @@ dependencies = [
 Home = "https://github.com/Zen-Master-SoSo/mscore"
 
 [project.scripts]
-ms-info = "mscore.scripts.ms_info:main"
 ms-cleanup = "mscore.scripts.ms_cleanup:main"
 ms-colorize = "mscore.scripts.ms_colorize:main"
 ms-concatenate = "mscore.scripts.ms_concatenate:main"
 ms-copy-instrument = "mscore.scripts.ms_copy_instrument:main"
-ms-port-partition = "mscore.scripts.ms_port_partition:main"
 ms-create-template = "mscore.scripts.ms_create_template:main"
+ms-info = "mscore.scripts.ms_info:main"
+ms-port-partition = "mscore.scripts.ms_port_partition:main"
+ms-stem = "mscore.scripts.ms_stem:main"
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]

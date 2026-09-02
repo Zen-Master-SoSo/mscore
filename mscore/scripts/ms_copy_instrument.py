@@ -93,10 +93,10 @@ def main():
 		help = 'MuseScore3 score file to copy to')
 	p.add_argument('--part', '-p', type = str, nargs = '*',
 		help = 'Part to copy')
-	p.add_argument("--clef", "-c", action = "store_true",
-		help = "Copy default clef definition as well")
-	p.add_argument("--verbose", "-v", action = "store_true",
-		help = "Show more detailed debug information")
+	p.add_argument('--clef', '-c', action = 'store_true',
+		help = 'Copy default clef definition as well')
+	p.add_argument('--verbose', '-v', action = 'store_true',
+		help = 'Show more detailed debug information')
 	p.epilog = __doc__
 	options = p.parse_args()
 	for tgt_filename in options.Targets:
@@ -104,7 +104,7 @@ def main():
 			p.error('Source is the same file as Target')
 	logging.basicConfig(
 		level = logging.DEBUG if options.verbose else logging.ERROR,
-		format = "[%(filename)24s:%(lineno)3d] %(message)s"
+		format = '[%(filename)24s:%(lineno)3d] %(message)s'
 	)
 
 	source = Score(options.Source[0])

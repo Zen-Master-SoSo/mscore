@@ -21,11 +21,10 @@
 A python library for opening/inspecting/modifying MuseScore3 files.
 """
 import os, sys, logging
-from configparser import ConfigParser, NoSectionError
-from glob import glob
+from configparser import ConfigParser, NoSectionError, NoOptionError
 from io import BytesIO
-from os.path import join, basename, splitext, exists, isdir
-import xml.etree.ElementTree as et
+from pathlib import Path
+from xml.etree.ElementTree import SubElement, parse as parse_xml
 try:
 	from functools import cache
 except ImportError:
@@ -77,13 +76,40 @@ class VoiceName:
 	def __str__(self):
 		return f'{self.instrument_name} ({self.voice or DEFAULT_VOICE})'
 
+	def __repr__(self):
+		return f'<{self.instrument_name}:{self.voice or DEFAULT_VOICE}>'
+
 	def __eq__(self, other):
 		return self.instrument_name == other.instrument_name \
 			and self.voice == other.voice
 
 
+class ChannelMoniker:
+	"""
+	Simple hashable class which can be used to identify a single channel in the global score.
+	"""
+
+	def __init__(self, part_name, channel_name):
+		self._part_name = part_name
+		self._channel_name = channel_name
+
+	@property
+	def part_name(self):
+		return self._part_name
+
+	@property
+	def channel_name(self):
+		return self._channel_name
+
+	def __repr__(self):
+		return f'<{self.part_name}:{self.channel_name}>'
+
+
 def is_score(filename):
-	return splitext(filename)[-1] in ['.mscx', '.mscz']
+	"""
+	Returns True if the given filename appears to be a MuseScore score.
+	"""
+	return Path(filename).suffix.lower() in ['.mscx', '.mscz']
 
 def ini_file():
 	"""
@@ -98,67 +124,79 @@ def ini_file():
 	The ConfigParser may be used to modify the .ini file, but that is outside of
 	the (current) scope of this project. USE AT YOUR OWN RISK!
 	"""
-	filename = join(user_config_dir('MuseScore'), 'MuseScore3.ini')
+	path = Path(user_config_dir('MuseScore')) / 'MuseScore3.ini'
 	config = ConfigParser()
-	config.read(filename)
+	config.read(path)
 	return config
 
 def instruments_file():
 	"""
-	Returns (str) path to "instruments.xml"
+	Returns (Path) path to "instruments.xml"
 	"""
 	for key in ['paths\\instrumentlist1', 'paths\\instrumentlist2']:
 		try:
-			filename = ini_file().get('application', key)
-			if exists(filename):
-				return filename
-		except NoSectionError:
+			path = Path(ini_file().get('application', key))
+			if path.exists():
+				return path
+		except NoSectionError, NoOptionError:
 			pass
-	for dirname in glob('/usr/share/mscore*'):
-		if isdir(dirname):
-			filename = join(dirname, 'instruments.xml')
-			if exists(filename):
-				return filename
-			filename = join(dirname, 'instruments', 'instruments.xml')
-			if exists(filename):
-				return filename
+	for path in Path('/usr/share').glob('mscore*'):
+		if path.is_dir():
+			if path.joinpath('instruments.xml').exists():
+				return path.joinpath('instruments.xml')
+			if path.joinpath('instruments', 'instruments.xml').exists():
+				return path.joinpath('instruments', 'instruments.xml')
 	return None
 
 @cache
 def default_sound_fonts():
-	filename = join(user_data_dir('MuseScore'), 'MuseScore3', 'synthesizer.xml')
-	return [ node.text for node in et.parse(filename).findall('.//Fluid/val') ]
+	"""
+	Returns a list of Path objects, each pointing to one of the default soundfonts
+	loaded when MuseScore starts.
+	"""
+	path = Path(user_data_dir('MuseScore')) / 'MuseScore3' / 'synthesizer.xml'
+	if path.exists():
+		return [ node.text for node in parse_xml(path).findall('.//Fluid/val') ]
 
 @cache
 def user_soundfont_dirs():
+	"""
+	Returns a list of Path objects, each pointing to one of the soundfont
+	directories defined by the user.
+	"""
 	try:
-		return ini_file()['application']['paths\\mySoundfonts'].strip('"').split(';')
-	except KeyError:
+		return [ Path(filename)
+			for filename in ini_file()['application']['paths\\mySoundfonts'].strip('"').split(';') ]
+	except KeyError, NoSectionError, NoOptionError:
 		return []
 
 @cache
 def system_soundfont_dirs():
-	return ['/usr/share/sounds/sf2']
+	"""
+	Returns a list of Path objects, each pointing to one of the common system
+	soundfont directories.
+	"""
+	return [ Path('/usr/share/sounds/sf2') ]
 
 @cache
 def user_soundfonts():
+	"""
+	Returns a list of Path objects, each pointing to one of the soundfonts found in
+	the user -defined soundfount directories.
+	"""
 	return list(_iter_sf_paths(user_soundfont_dirs()))
 
 @cache
 def system_soundfonts():
+	"""
+	Returns a list of Path objects, each pointing to one of the soundfonts found in
+	one of the common system soundfont directories
+	"""
 	return list(_iter_sf_paths(system_soundfont_dirs()))
 
-@cache
-def _user_sfpaths():
-	return { basename(path):path for path in user_soundfonts() }
-
-@cache
-def _system_sfpaths():
-	return { basename(path):path for path in system_soundfonts() }
-
-def _iter_sf_paths(dirs):
-	for d in dirs:
-		yield from glob(f'{d}/*.sf2')
+def _iter_sf_paths(paths):
+	for path in paths:
+		yield from path.glob('*.sf2')
 
 
 # ----------------------------
@@ -183,12 +221,10 @@ class Score(SmartTree):
 
 	# pylint: disable-next = super-init-not-called
 	def __init__(self, filename):
-		self.filename = filename
-		self.basename = basename(filename)
-		self.ext = splitext(filename)[-1]
-		if self.ext == '.mscx':
-			self.tree = et.parse(filename)
-		elif self.ext == '.mscz':
+		self._path = Path(filename)
+		if self.extension == '.mscx':
+			self.tree = parse_xml(filename)
+		elif self.extension == '.mscz':
 			with ZipFile(self.filename, 'r') as zipfile:
 				self.__zip_entries = [
 					{
@@ -197,19 +233,22 @@ class Score(SmartTree):
 					} for info in zipfile.infolist()
 				]
 			for idx, entry in enumerate(self.__zip_entries):
-				if splitext(entry['info'].filename)[-1] == '.mscx':
+				if Path(entry['info'].filename).suffix.lower() == '.mscx':
 					self.__zip_mscx_index = idx
 					break
 			if self.__zip_mscx_index is None:
 				raise RuntimeError("No mscx entries found in zip file")
 			with BytesIO(self.__zip_entries[self.__zip_mscx_index]['data']) as bob:
-				self.tree = et.parse(bob)
+				self.tree = parse_xml(bob)
 		else:
-			raise ValueError(f'Unsupported file extension: "{self.ext}"')
+			raise ValueError(f'Unsupported file extension: "{self.extension}"')
 		self.element = self.tree.getroot() # Necessary member of SmartTree
 		self._score_node = self.element.find('./Score')
 		self._parts = { part.name:part \
 			for part in Part.from_elements(self.findall('./Part'), self) }
+
+	# -----------------------------
+	# Basic node functions
 
 	def score_node(self):
 		return self._score_node
@@ -220,24 +259,45 @@ class Score(SmartTree):
 	def findall(self, path):
 		return self._score_node.findall(path)
 
+	# -----------------------------
+	# Save functions
+
 	def save_as(self, filename):
-		ext = splitext(filename)[-1]
-		if ext == '.mscz' and self.ext == '.mscx':
+		path = Path(filename)
+		if path.suffix.lower() == '.mscz' and self.extension == '.mscx':
 			raise RuntimeError('Cannot save score imported from .mscx to .mscz format')
-		self.filename = filename
-		self.ext = ext
+		self._path = Path(filename)
 		self.save()
 
 	def save(self):
-		if self.ext == '.mscx':
+		if self.extension == '.mscx':
 			self.tree.write(self.filename, xml_declaration = True, encoding = 'utf-8')
-		elif self.ext == '.mscz':
+		elif self.extension == '.mscz':
 			with BytesIO() as bob:
 				self.tree.write(bob)
 				self.__zip_entries[self.__zip_mscx_index]['data'] = bob.getvalue()
 			with ZipFile(self.filename, 'w') as zipfile:
 				for entry in self.__zip_entries:
 					zipfile.writestr(entry['info'], entry['data'])
+
+	@property
+	def filename(self):
+		return str(self._path)
+
+	@property
+	def name(self):
+		return self._path.name
+
+	@property
+	def filetitle(self):
+		return self._path.stem
+
+	@property
+	def extension(self):
+		return self._path.suffix.lower()
+
+	# -----------------------------
+	# Element retrieval functions
 
 	def parts(self):
 		return self._parts.values()
@@ -250,10 +310,39 @@ class Score(SmartTree):
 			for instrument in self.instruments() \
 			for channel in instrument.channels() ]
 
+	def channel(self, part_name, channel_name):
+		"""
+		Returns Channel object.
+		"""
+		return self.part(part_name).instrument().channel(channel_name)
+
+	def empty_channels(self):
+		"""
+		Returns a list of ChannelMoniker
+		"""
+		return reduce(add, [ part.empty_channels() for part in self.parts() ])
+
 	def staffs(self):
 		return [ staff \
 			for part in self.parts() \
 			for staff in part.staffs() ]
+
+	def tempo_changes(self):
+		"""
+		Returns list of element.
+		"""
+		changes = [ ]
+		for measure_number, measure_node in enumerate(self.findall('./Staff[@id="1"]/Measure')):
+			for voice in measure_node.findall('./voice'):
+				elem_list = list(voice)
+				for index, node in enumerate(elem_list):
+					if node.tag == 'Tempo':
+						changes.append(TempoChange(node, measure_number,
+							elem_list[index - 1] if index > 0 else None))
+		return changes
+
+	# -----------------------------
+	# Informational functions
 
 	@property
 	def length(self):
@@ -283,35 +372,11 @@ class Score(SmartTree):
 
 	def channel_monikers(self):
 		"""
-		Returns a list of (str) monikers which may be used to retrieve / delete an
-		individual channel.
-
-		Monikers are in the format "<Part.name>:<Channel.name>"
+		Returns a list of ChannelMoniker.
 		"""
-		return [ f'{part.name}:{channel.name}' \
+		return [ ChannelMoniker(part.name, channel.name) \
 			for part in self.parts() \
-			for channel in part.instrument().channels() ]
-
-	def channel(self, moniker):
-		"""
-		Returns Channel object
-		"moniker" must be a string in the format:
-			"<Part.name>:<Channel.name>"
-		"""
-		part_name, channel_name = moniker.split(':', 1)
-		return self.part(part_name).instrument().channel(channel_name)
-
-	def empty_channels(self):
-		"""
-		Returns a list of (str) channel monikers.
-		"""
-		return reduce(add, [ part.empty_channels() for part in self.parts() ])
-
-	def concatenate_measures(self, source_score):
-		for staff in self.findall('./Staff'):
-			staff_id = staff.attrib['staff_id']
-			source_measures = source_score.findall(f'./Staff[@staff_id="{staff_id}"]/Measure')
-			staff.extend(source_measures)
+			for channel in part.channels() ]
 
 	def meta_tags(self):
 		"""
@@ -329,7 +394,23 @@ class Score(SmartTree):
 	def sound_fonts(self):
 		return list(set( el.text for el in self.findall('.//Synthesizer/Fluid/val') ))
 
-	def clear_synth(self):
+	# -----------------------------
+	# Modification functions
+
+	def concatenate_measures(self, source_score):
+		"""
+		Concatenates the measures from "source_score" at the end of this scores measures.
+		"""
+		for staff in self.findall('./Staff'):
+			staff_id = staff.attrib['staff_id']
+			source_measures = source_score.findall(f'./Staff[@staff_id="{staff_id}"]/Measure')
+			staff.extend(source_measures)
+
+	def remove_channel_synths(self):
+		"""
+		Removes all synthesizer related nodes in every channel. This includes MIDI
+		program and assigned synthesizer.
+		"""
 		for channel in self.findall('Channel'):
 			for node in channel.findall('controller'):
 				channel.remove(node)
@@ -338,8 +419,36 @@ class Score(SmartTree):
 			for node in channel.findall('synti'):
 				channel.remove(node)
 
-	def __str__(self):
-		return f'<Score "{self.filename}">'
+	def disable_synth_effects(self):
+		"""
+		Disables reverb and chorus effects.
+		Functions by setting nodes in //Synthesizer/master to "NoEffect"
+		"""
+		for path in ['./Synthesizer/master/val[@id="0"]',
+			'./Synthesizer/master/val[@id="1"]']:
+			for node in self.findall(path):
+				node.text = 'NoEffect'
+
+	def remove_solo_mute(self):
+		"""
+		Removes "solo" and "mute" flags for every channel.
+		"""
+		for channel in self.channels():
+			channel.remove_solo_mute()
+
+	def solo(self, part_name):
+		"""
+		Mute every channel in every part except the given part.
+		"""
+		for channel in self.channels():
+			channel.solo(channel.part_name == part_name)
+			channel.mute(channel.part_name != part_name)
+
+	# -----------------------------
+	# Pythony funcs
+
+	def __repr__(self):
+		return f'<Score "{self._path}">'
 
 
 class Part(SmartNode):
@@ -362,6 +471,9 @@ class Part(SmartNode):
 	def instrument(self):
 		return self._instrument
 
+	def channels(self):
+		return self._instrument.channels()
+
 	def replace_instrument(self, instrument):
 		if not isinstance(instrument, Instrument):
 			raise ValueError('Can only copy Instrument')
@@ -369,17 +481,6 @@ class Part(SmartNode):
 		old_instrument_node = self.find('Instrument')
 		self.element.remove(old_instrument_node)
 		self.element.append(new_instrument_node)
-
-	def copy_clef(self, source_part):
-		"""
-		Copy the staff definition from the given source_part to this Part.
-		"""
-		for source_staff, target_staff in zip(source_part.staffs(), self.staffs()):
-			for node_name in ['defaultClef', 'defaultConcertClef', 'defaultTransposingClef']:
-				source_node = source_staff.child(node_name, False)
-				if not source_node is None:
-					target_node = target_staff.child(node_name, True)
-					target_node.text = source_node.text
 
 	def staffs(self):
 		return Staff.from_elements(self.findall('Staff'), self)
@@ -402,32 +503,50 @@ class Part(SmartNode):
 
 	def channel_monikers(self):
 		"""
-		Returns a list of (str) monikers which may be used to retrieve / delete an
-		individual channel.
-
-		Monikers are in the format "<Part.name>:<Channel.name>"
+		Returns a list of ChannelMoniker.
 		"""
-		return [ f'{self.name}:{channel.name}' \
-			for channel in self.instrument().channels() ]
+		return [ ChannelMoniker(self.name, channel.name)
+			for channel in self.channels() ]
 
 	def empty_channels(self):
 		"""
-		Returns a list of (str) monikers which may be used to retrieve / delete an
-		individual channel.
-
-		Monikers are in the format "<Part.name>:<Channel.name>"
+		Returns a list of ChannelMoniker for channels that are never switched to.
 		"""
 		if self.is_empty():
 			return self.channel_monikers()
 		switches = self.channel_switches_used()
 		default_name = self.instrument().default_channel().name
-		return [ f'{self.name}:{channel.name}' \
-			for channel in self.instrument().channels() \
+		return [ ChannelMoniker(self.name, channel.name) \
+			for channel in self.channels() \
 			if channel.name != default_name and channel.name not in switches ]
 
 	@property
 	def name(self):
 		return self.element_text('trackName')
+
+	# -----------------------------
+	# Modification functions
+
+	def copy_clef(self, source_part):
+		"""
+		Copy the staff definition from the given source_part to this Part.
+		"""
+		for source_staff, target_staff in zip(source_part.staffs(), self.staffs()):
+			for node_name in ['defaultClef', 'defaultConcertClef', 'defaultTransposingClef']:
+				source_node = source_staff.child(node_name, False)
+				if not source_node is None:
+					target_node = target_staff.child(node_name, True)
+					target_node.text = source_node.text
+
+	def center_pan(self):
+		"""
+		Centers the pan value for all channels in this Part.
+		"""
+		for channel in self.channels():
+			channel.pan = 63
+
+	# -----------------------------
+	# Pythony funcs
 
 	def __str__(self):
 		return f'<Part "{self.name}">'
@@ -443,8 +562,8 @@ class Instrument(SmartNode):
 		self._init_channels()
 
 	def _init_channels(self):
-		self._channels = { chan.name:chan \
-			for chan in Channel.from_elements(self.findall('./Channel'), self) }
+		self._channels = { channel.name:channel \
+			for channel in Channel.from_elements(self.findall('./Channel'), self) }
 
 	def channels(self):
 		"""
@@ -468,11 +587,12 @@ class Instrument(SmartNode):
 		"""
 		Returns all channels' name, including duplicates, if any.
 		"""
-		return [ channel.name for channel in self.channels() ]
+		return [ channel.name for channel in
+			Channel.from_elements(self.findall('./Channel'), self) ]
 
 	def duplicate_channel_names(self):
-		a = self.channel_names()
-		return [ name for name in set(a) if a.count(name) > 1]
+		names = self.channel_names()
+		return [ name for name in set(names) if names.count(name) > 1]
 
 	def has_duplicate_channel_names(self):
 		return len(self.duplicate_channel_names()) > 0
@@ -572,7 +692,7 @@ class Instrument(SmartNode):
 		"""
 		if self.find(f'Channel[@name="{name}"]'):
 			raise RuntimeError(f'Channel "{name}" already exists')
-		new_channel_node = et.SubElement(self.element, 'Channel')
+		new_channel_node = SubElement(self.element, 'Channel')
 		new_channel_node.set('name', name)
 		self._init_channels()
 		return self.channel(name)
@@ -611,7 +731,7 @@ class Channel(SmartNode):
 			raise ValueError('Invalid CC value')
 		el = self.find(f'controller[@ctrl="{ccid}"]')
 		if el is None:
-			el = et.SubElement(self.element, 'controller')
+			el = SubElement(self.element, 'controller')
 			el.set('ctrl', str(ccid))
 		el.set('value', value)
 
@@ -629,6 +749,14 @@ class Channel(SmartNode):
 	@property
 	def instrument_name(self):
 		return self._parent.name
+
+	@property
+	def part_name(self):
+		return self._parent._parent.name
+
+	@property
+	def moniker(self):
+		return ChannelMoniker(self.part_name, self.name)
 
 	@property
 	def voice_name(self):
@@ -651,9 +779,7 @@ class Channel(SmartNode):
 		value = int(value)
 		if value < 1:
 			raise ValueError('Channel midi_port must be greater than 0')
-		node = self.find('midiPort')
-		if node is None:
-			node = et.SubElement(self.element, 'midiPort')
+		node = self.child('midiPort')
 		node.text = str(value - 1)
 
 	@property
@@ -675,7 +801,7 @@ class Channel(SmartNode):
 			raise ValueError('Channel midi_channel must be betwen 1 and 16, inclusive')
 		node = self.find('midiChannel')
 		if node is None:
-			node = et.SubElement(self.element, 'midiChannel')
+			node = SubElement(self.element, 'midiChannel')
 		node.text = str(value - 1)
 
 	@property
@@ -701,6 +827,29 @@ class Channel(SmartNode):
 	@pan.setter
 	def pan(self, value):
 		self.set_controller_value(CC_PAN, str(value))
+
+	# -----------------------------
+	# Modification functions
+
+	def remove_solo_mute(self):
+		"""
+		Remove "solo" and "mute" child nodes.
+		"""
+		for path in ['solo', 'mute']:
+			for node in self.findall(path):
+				self.element.remove(node)
+
+	def solo(self, enable = True):
+		"""
+		Creates a "solo" child node (if not exists)
+		"""
+		self.child('solo').text = '1' if enable else '0'
+
+	def mute(self, enable = True):
+		"""
+		Create "solo" child node.
+		"""
+		self.child('mute').text = '1' if enable else '0'
 
 	def __str__(self):
 		return f'<Channel "{self.voice_name}">'
@@ -733,11 +882,11 @@ class Staff(SmartNode):
 			staff_node.remove(node)
 		for node in measure_nodes[0].getchildren():
 			measure_nodes[0].remove(node)
-		voice_node = et.SubElement(measure_nodes[0], 'voice')
-		rest_node = et.SubElement(voice_node, 'Rest')
-		node = et.SubElement(rest_node, 'durationType')
+		voice_node = SubElement(measure_nodes[0], 'voice')
+		rest_node = SubElement(voice_node, 'Rest')
+		node = SubElement(rest_node, 'durationType')
 		node.text = 'measure'
-		node = et.SubElement(rest_node, 'duration')
+		node = SubElement(rest_node, 'duration')
 		node.text = '4/4'
 
 	def channel_switches_used(self):
@@ -810,6 +959,25 @@ class Measure(SmartNode):
 		"""
 		nodes = self.findall('./voice/StaffText/channelSwitch')
 		return set() if nodes is None else { node.attrib['name'] for node in nodes }
+
+
+class TempoChange(SmartNode):
+	"""
+	//Tempo node
+	"""
+
+	def __init__(self, node, measure_number, previous_element):
+		super().__init__(node)
+		self.tempo = float(self.find('tempo').text)
+		self.measure = float(measure_number)
+		if previous_element and previous_element.tag == 'location':
+			fractions_node = previous_element.find('fractions')
+			if fractions_node is not None:
+				numerator, denominator = fractions_node.text.split('/', 1)
+				self.measure -= float(numerator) / float(denominator)
+
+	def __repr__(self):
+		return f'<TempoChange {self.tempo} at measure {self.measure}>'
 
 
 class MetaTag(SmartNode):
