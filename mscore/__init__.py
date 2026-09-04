@@ -138,7 +138,7 @@ def instruments_file():
 			path = Path(ini_file().get('application', key))
 			if path.exists():
 				return path
-		except NoSectionError, NoOptionError:
+		except (NoSectionError, NoOptionError):
 			pass
 	for path in Path('/usr/share').glob('mscore*'):
 		if path.is_dir():
@@ -167,7 +167,7 @@ def user_soundfont_dirs():
 	try:
 		return [ Path(filename)
 			for filename in ini_file()['application']['paths\\mySoundfonts'].strip('"').split(';') ]
-	except KeyError, NoSectionError, NoOptionError:
+	except (KeyError, NoSectionError, NoOptionError):
 		return []
 
 @cache
